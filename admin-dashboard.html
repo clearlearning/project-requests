@@ -711,7 +711,7 @@ async function exportCsv() {
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'project-requests-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = 'project-requests' + new Date().toISOString().slice(0, 10) + '.csv';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   } catch (e) {
