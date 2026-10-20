@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Requests Admin Dashboard | CLEAR</title>
+<link rel="icon" type="image/png" href="https://assets-002.noviams.com/novi-file-uploads/clear/structure/clearlogo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --burgundy:#64092C; --burgundy-deep:#4a0620; --gold:#DDA838; --gold-soft:#f7ebcf;
+  --charcoal:#484848; --blue:#084D78; --ink:#2b2b2b; --muted:#666;
+  --paper:#fff; --ground:#f5f6f7; --line:#d9dbde; --line-strong:#b9bcc0;
+  --error:#a3261b; --error-soft:#fbecea; --ok:#2e6b3a; --ok-soft:#e8f3ea;
+  --radius:6px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Open Sans","Trebuchet MS",Arial,sans-serif;font-size:15px;line-height:1.5;color:var(--ink);background:var(--ground)}
+a{color:var(--blue)}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+[hidden]{display:none !important}
+
+.masthead{background:var(--burgundy);border-bottom:4px solid var(--gold);color:#fff}
+.masthead-inner{max-width:1400px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;color:#fff;margin-right:auto;text-decoration:none}
+.brand img{width:38px;height:38px;border-radius:50%;background:#fff}
+.brand span{font-size:1.05rem;font-weight:700}
+.nav{display:flex;gap:4px;flex-wrap:wrap}
+.nav button,.nav a{background:none;border:0;color:#fff;font:inherit;font-size:.9rem;font-weight:600;padding:8px 12px;border-radius:var(--radius);cursor:pointer;text-decoration:none}
+.nav button:hover,.nav a:hover{background:rgba(255,255,255,.12)}
+.nav button[aria-current="page"]{background:rgba(255,255,255,.18);box-shadow:inset 0 -3px 0 var(--gold)}
+
+.wrap{max-width:1400px;margin:0 auto;padding:28px 24px 80px}
+h1.page{color:var(--burgundy);font-size:1.75rem;margin:0 0 18px;line-height:1.2}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:28px;max-width:640px}
+.panel h1{color:var(--burgundy);margin:0 0 10px;font-size:1.5rem}
+.panel p{margin:0 0 16px;color:var(--charcoal)}
+.center-msg{text-align:center;padding:60px 24px;color:var(--muted)}
+
+/* Queue counters */
+.queue{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
+.queue button{font:inherit;background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:var(--radius);padding:10px 16px;cursor:pointer;text-align:left;min-width:170px}
+.queue button:hover{border-color:var(--line-strong)}
+.queue button[aria-pressed="true"]{border-color:var(--burgundy);border-left-color:var(--burgundy);background:#fbf5f7}
+.queue b{display:block;font-size:1.4rem;line-height:1.1;color:var(--burgundy)}
+.queue span{font-size:.85rem;color:var(--charcoal)}
+.queue .q-new{border-left-color:var(--blue)}
+.queue .q-reply{border-left-color:var(--gold)}
+.queue .q-due{border-left-color:var(--error)}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 14px}
+.toolbar input[type=search]{flex:1 1 260px}
+input[type=text],input[type=search],input[type=date],select,textarea{font:inherit;font-size:.93rem;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:var(--radius);padding:8px 10px}
+textarea{width:100%;min-height:80px;resize:vertical;line-height:1.5}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);outline:2px solid rgba(8,77,120,.25);outline-offset:0}
+
+.btn{font:inherit;font-weight:600;border-radius:var(--radius);padding:8px 16px;cursor:pointer;border:2px solid var(--burgundy);background:var(--burgundy);color:#fff;font-size:.92rem}
+.btn:hover{background:var(--burgundy-deep);border-color:var(--burgundy-deep)}
+.btn[disabled]{opacity:.6;cursor:wait}
+.btn.secondary{background:#fff;color:var(--burgundy)}
+.btn.secondary:hover{background:#fbf5f7}
+.btn.danger{background:#fff;color:var(--error);border-color:var(--error)}
+.btn.danger:hover{background:var(--error-soft)}
+.linkbtn{background:none;border:0;color:var(--blue);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+
+/* Table */
+.table-wrap{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.82rem;font-weight:700;color:var(--charcoal);background:#fafafa;white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#fbf8f9}
+tbody tr:last-child td{border-bottom:0}
+td.id{font-weight:700;color:var(--burgundy);white-space:nowrap}
+td .sub{display:block;color:var(--muted);font-size:.82rem}
+.flag{display:inline-block;font-size:.75rem;font-weight:700;color:#7a5408;background:var(--gold-soft);border-radius:4px;padding:1px 6px;margin-left:6px;white-space:nowrap}
+.due-soon{color:var(--error);font-weight:600}
+.status{display:inline-block;font-size:.78rem;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.s-new{background:#e8eef4;color:var(--blue);border-color:#c3d3e2}
+.s-review{background:#f1eef7;color:#4b3a78;border-color:#d8d0ea}
+.s-info{background:var(--gold-soft);color:#7a5408;border-color:#ecd39b}
+.s-active{background:#fbf0f3;color:var(--burgundy);border-color:#e8c6d1}
+.s-hold{background:#eeeeee;color:var(--charcoal);border-color:#d6d6d6}
+.s-done{background:var(--ok-soft);color:var(--ok);border-color:#bfdcc5}
+.s-declined{background:#f3f3f3;color:#777;border-color:#ddd}
+.prio-Critical{color:var(--error);font-weight:700}
+.prio-High{color:var(--burgundy);font-weight:600}
+
+/* Drawer */
+.backdrop{position:fixed;inset:0;background:rgba(30,20,24,.38);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(820px,100%);background:var(--paper);z-index:21;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,.18)}
+.drawer-head{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:flex-start}
+.drawer-head h2{margin:0;font-size:1.3rem;line-height:1.3;color:var(--ink)}
+.drawer-head .rid{color:var(--burgundy);font-weight:700;font-size:.9rem}
+.drawer-head p{margin:4px 0 0;color:var(--muted);font-size:.88rem}
+.drawer-head .close{margin-left:auto;flex:0 0 auto}
+.drawer-tabs{display:flex;gap:2px;padding:0 24px;border-bottom:1px solid var(--line);overflow-x:auto}
+.drawer-tabs button{font:inherit;font-weight:600;font-size:.9rem;background:none;border:0;border-bottom:3px solid transparent;padding:12px 12px 9px;cursor:pointer;color:var(--charcoal);white-space:nowrap}
+.drawer-tabs button[aria-selected="true"]{color:var(--burgundy);border-bottom-color:var(--burgundy)}
+.drawer-body{flex:1;overflow-y:auto;padding:24px}
+.drawer-foot{padding:14px 24px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:center;background:#fafafa}
+.dirty{color:#7a5408;font-size:.86rem;font-weight:600}
+
+dl.summary{display:grid;grid-template-columns:1fr;gap:2px 20px;margin:0}
+@media (min-width:640px){dl.summary{grid-template-columns:190px 1fr}}
+dl.summary dt{font-weight:600;color:var(--charcoal);font-size:.88rem;padding-top:2px}
+dl.summary dd{margin:0 0 12px;white-space:pre-wrap;word-break:break-word}
+dl.summary dd a{word-break:break-all}
+
+.grid{display:grid;gap:14px 18px;grid-template-columns:1fr}
+@media (min-width:640px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.f label,.f .label{display:block;font-weight:600;font-size:.86rem;margin:0 0 4px;color:var(--charcoal)}
+.f input,.f select{width:100%}
+.block{margin:22px 0 0}
+.block h3{font-size:1rem;color:var(--burgundy);margin:0 0 10px}
+.checks{display:grid;gap:6px 14px;grid-template-columns:1fr}
+@media (min-width:560px){.checks{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.checks label{display:flex;gap:8px;align-items:flex-start;font-size:.9rem;cursor:pointer}
+.checks input{accent-color:var(--burgundy);margin-top:3px}
+.risk{width:100%;border-collapse:collapse;min-width:0}
+.risk th,.risk td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:center;font-size:.88rem}
+.risk th:first-child,.risk td:first-child{text-align:left}
+.risk tbody tr{cursor:default}
+.risk tbody tr:hover{background:none}
+.risk input{accent-color:var(--burgundy);width:16px;height:16px}
+
+.msg{padding:12px 14px;border-radius:var(--radius);margin:0 0 10px;background:var(--ground);border-left:3px solid var(--line-strong)}
+.msg.admin{background:#fbf5f7;border-left-color:var(--burgundy)}
+.msg.note{background:#fffaf0;border-left-color:var(--gold)}
+.msg header{font-size:.82rem;color:var(--muted);margin:0 0 4px}
+.msg header strong{color:var(--ink)}
+.msg p{margin:0;white-space:pre-wrap;word-break:break-word}
+.empty{color:var(--muted);font-style:italic;margin:0 0 12px}
+.compose{margin:16px 0 0}
+.compose textarea{margin:0 0 10px}
+.history{list-style:none;margin:0;padding:0}
+.history li{padding:10px 0;border-bottom:1px solid var(--line)}
+.history li:last-child{border-bottom:0}
+.history .when{font-size:.82rem;color:var(--muted)}
+.history ul{margin:6px 0 0;padding-left:18px;font-size:.9rem}
+.history del{color:var(--muted)}
+.danger-zone{margin:28px 0 0;padding:16px;border:1px solid #e3b5af;border-radius:var(--radius);background:#fffafa}
+.danger-zone p{margin:0 0 10px;font-size:.9rem;color:var(--charcoal)}
+
+/* Staff directory */
+.staff-note{max-width:760px;color:var(--charcoal);margin:0 0 16px}
+.staff-table{min-width:640px}
+.staff-table tbody tr{cursor:default}
+.staff-table tbody tr:hover{background:none}
+.staff-table input{width:100%}
+.staff-actions{display:flex;gap:12px;margin:14px 0 0;align-items:center}
+
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:var(--radius);font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.2);z-index:60}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="brand">
+      <img src="https://assets-002.noviams.com/novi-file-uploads/clear/structure/clearlogo.png" alt="CLEAR logo">
+      <span>Project Requests Admin Dashboard</span>
+    </div>
+    <nav class="nav" id="nav" hidden>
+      <button type="button" data-view="requests" aria-current="page">Requests</button>
+      <button type="button" data-view="staff">Staff directory</button>
+      <a href="index.html">Request form</a>
+      <button type="button" id="signOut">Sign out</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="view-loading" class="center-msg">Loading…</div>
+
+  <section id="view-signin" class="panel" hidden>
+    <h1>Sign in to the admin dashboard</h1>
+    <p id="signinMessage">Use your CLEAR email address. You will receive a one-time code to confirm your identity.</p>
+    <button type="button" class="btn" id="signInBtn">Sign in</button>
+  </section>
+
+  <section id="view-denied" class="panel" hidden>
+    <h1>Administrator access required</h1>
+    <p>This dashboard is limited to administrators. You can still submit and follow your own requests on the request form.</p>
+    <a class="btn" href="index.html">Open the request form</a>
+  </section>
+
+  <section id="view-error" class="panel" hidden>
+    <h1>The dashboard could not load</h1>
+    <p id="errorMessage"></p>
+    <button type="button" class="btn secondary" onclick="location.reload()">Try again</button>
+  </section>
+
+  <section id="view-requests" hidden>
+    <h1 class="page">Project requests</h1>
+    <div class="queue" id="queue"></div>
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search by title, requester, or ID" aria-label="Search requests">
+      <select id="statusFilter" aria-label="Filter by status"></select>
+      <select id="sortBy" aria-label="Sort requests">
+        <option value="newest">Newest first</option>
+        <option value="activity">Recent activity</option>
+        <option value="deadline">Deadline soonest</option>
+        <option value="priority">Priority</option>
+      </select>
+      <button type="button" class="btn secondary" id="refreshBtn">Refresh</button>
+      <button type="button" class="btn secondary" id="exportBtn">Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Request</th><th>Requester</th><th>Status</th><th>Priority</th><th>Timing</th><th>Assigned to</th><th>Last activity</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="view-staff" hidden>
+    <h1 class="page">Staff directory</h1>
+    <p class="staff-note">Names listed here appear as process owner options on the request form. Email addresses let the form recognize the signed-in requester; separate multiple addresses for one person with commas.</p>
+    <div class="table-wrap">
+      <table class="staff-table">
+        <thead><tr><th style="width:32%">Name</th><th>Email addresses</th><th style="width:90px"><span class="sr">Remove</span></th></tr></thead>
+        <tbody id="staffRows"></tbody>
+      </table>
+    </div>
+    <div class="staff-actions">
+      <button type="button" class="btn secondary" id="addStaff">Add person</button>
+      <button type="button" class="btn" id="saveStaff">Save directory</button>
+    </div>
+  </section>
+</main>
+
+<div class="backdrop" id="backdrop" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden>
+  <div class="drawer-head">
+    <div>
+      <div class="rid" id="drawerId"></div>
+      <h2 id="drawerTitle"></h2>
+      <p id="drawerMeta"></p>
+    </div>
+    <button type="button" class="btn secondary close" id="closeDrawer">Close</button>
+  </div>
+  <div class="drawer-tabs" role="tablist" id="drawerTabs">
+    <button type="button" role="tab" data-tab="request" aria-selected="true">Request</button>
+    <button type="button" role="tab" data-tab="triage" aria-selected="false">Triage</button>
+    <button type="button" role="tab" data-tab="conversation" aria-selected="false">Conversation</button>
+    <button type="button" role="tab" data-tab="notes" aria-selected="false">Internal notes</button>
+    <button type="button" role="tab" data-tab="history" aria-selected="false">History</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot" id="drawerFoot" hidden>
+    <button type="button" class="btn" id="saveTriage">Save triage</button>
+    <span class="dirty" id="dirtyNote" hidden>Unsaved changes</span>
+  </div>
+</aside>
+
+<script>
+/* ===== Configuration ===== */
+const API_URL = 'https://project-requests-api.avance.workers.dev';
+const LOGIN_URL = 'https://project-requests-login.avance.workers.dev';
+const TOKEN_KEY = 'clear_pr_token';
+const OPEN_KEY = 'clear_pr_open';
+
+const STATUSES = ['New', 'Under review', 'Needs information', 'Approved', 'Scheduled', 'In progress', 'On hold', 'Completed', 'Declined'];
+const CLOSED = ['Completed', 'Declined'];
+const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+const REQUEST_TYPES = ['Process improvement', 'System enhancement', 'New development', 'Automation', 'Reporting and analytics', 'Fix or correction', 'Training or content', 'Other'];
+const EFFORTS = ['Minimal', 'Moderate', 'Significant', 'Not yet assessed'];
+const RISKS = [
+  ['riskOperational', 'Operational risk'], ['riskMember', 'Member or customer impact'], ['riskData', 'Data or privacy concerns'],
+  ['riskCyber', 'Cybersecurity implications'], ['riskComplexity', 'Implementation complexity']
+];
+const RISK_LEVELS = ['Low', 'Medium', 'High', 'N/A'];
+const SYSTEMS = ['Novi AMS', 'TalentLMS', 'PheedLoop', 'SharePoint / Microsoft 365', 'Power Automate', 'ClickTime', 'SurveyMonkey', 'QuickBooks', 'Custom-built tools (Cloudflare / GitHub Pages)', 'Other'];
+const BUSINESS_AREAS = ['Admin / general staff duties', 'Finance', 'Meeting and event planning', 'Programs (conferences)', 'CLEAR Learning programs', 'Marketing', 'CAMS clients', 'Membership', 'Publications', 'Committees', 'Resources', 'Systems', 'Board of Directors', 'General public'];
+const COMMUNICATIONS = ['Process documentation', 'End-user training', 'Marketing communications', 'Change management', 'None needed'];
+
+const SUB_LABELS = {
+  processOwners: 'Process owner(s)', leadershipAware: 'Leadership aware', requestKind: 'Kind of request',
+  existingTool: 'Existing tool or process', problem: 'Problem or opportunity', currentProcess: 'Current process',
+  frequency: 'Frequency', timePerOccurrence: 'Time each occurrence', affected: 'Who is affected',
+  definitionOfDone: 'Definition of done', suggestedSolution: 'Suggested solution', hasDeadline: 'Fixed deadline',
+  deadlineDate: 'Deadline date', deadlineDriver: 'Deadline driver', preferredTimeframe: 'Preferred timeframe',
+  timingDetails: 'Timing details', links: 'Supporting links', additionalContext: 'Additional context'
+};
+const TRIAGE_LABELS = {
+  status: 'Status', priority: 'Priority', requestType: 'Request type', effort: 'Level of effort', assignedTo: 'Assigned to',
+  targetStart: 'Target start', targetEnd: 'Target completion', riskOperational: 'Operational risk', riskMember: 'Member or customer impact',
+  riskData: 'Data or privacy concerns', riskCyber: 'Cybersecurity implications', riskComplexity: 'Implementation complexity',
+  riskNotes: 'Additional risk factors', systems: 'Systems affected', businessAreas: 'Business areas', communications: 'Communication needs',
+  inScope: 'In scope', outOfScope: 'Out of scope'
+};
+
+let me = null;
+let all = [];
+let staffList = [];
+let quick = '';
+let current = null;
+let currentTab = 'request';
+let triageDirty = false;
+
+/* ===== Helpers ===== */
+const $ = id => document.getElementById(id);
+function store(k, v, session) { try { const s = session ? sessionStorage : localStorage; v === null ? s.removeItem(k) : s.setItem(k, v); } catch (e) {} }
+function read(k, session) { try { return (session ? sessionStorage : localStorage).getItem(k) || ''; } catch (e) { return ''; } }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''; }
+function fmtDateTime(iso) { return iso ? new Date(iso).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
+function fmtDay(ymd) { if (!ymd) return ''; const [y, m, d] = ymd.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+function daysUntil(ymd) { if (!ymd) return null; const [y, m, d] = ymd.split('-').map(Number); const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(y, m - 1, d) - t) / 86400000); }
+function statusClass(s) {
+  return ({ 'New': 's-new', 'Under review': 's-review', 'Needs information': 's-info', 'Approved': 's-active', 'Scheduled': 's-active', 'In progress': 's-active', 'On hold': 's-hold', 'Completed': 's-done', 'Declined': 's-declined' })[s] || 's-new';
+}
+function linkify(text) {
+  return esc(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+}
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
+}
+function lastActivity(r) { return [r.updatedAt, r.lastMessageAt].filter(Boolean).sort().pop() || r.createdAt; }
+function awaitingReply(r) { return r.lastMessageRole === 'requester' && !CLOSED.includes(r.status); }
+function dueSoon(r) { const n = r.hasDeadline === 'Yes' ? daysUntil(r.deadlineDate) : null; return n !== null && n <= 30 && !CLOSED.includes(r.status); }
+
+(function captureToken() {
+  const m = location.hash.match(/token=([^&]+)/);
+  if (m) { store(TOKEN_KEY, decodeURIComponent(m[1])); history.replaceState(null, '', location.pathname); return; }
+  const open = location.hash.match(/^#(PR-[\w-]+)/);
+  if (open) { store(OPEN_KEY, open[1], true); history.replaceState(null, '', location.pathname); }
+})();
+
+async function api(path, opts = {}) {
+  const headers = { 'Authorization': 'Bearer ' + read(TOKEN_KEY) };
+  if (opts.body) headers['Content-Type'] = 'application/json';
+  let res;
+  try {
+    res = await fetch(API_URL + path, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  } catch (e) {
+    throw new Error('The request service could not be reached. Check your connection and try again.');
+  }
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (res.status === 401) {
+    store(TOKEN_KEY, null);
+    showSignIn('Your session has ended. Sign in again to continue.');
+    const err = new Error('unauthorized'); err.silent = true; throw err;
+  }
+  if (!res.ok) throw new Error((data && data.error) || 'The request could not be completed (' + res.status + ').');
+  return data;
+}
+
+/* ===== Views ===== */
+const VIEWS = ['loading', 'signin', 'denied', 'error', 'requests', 'staff'];
+function showView(name) {
+  VIEWS.forEach(v => { $('view-' + v).hidden = v !== name; });
+  document.querySelectorAll('#nav button[data-view]').forEach(b => b.dataset.view === name ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+}
+function showSignIn(msg) { $('nav').hidden = true; if (msg) $('signinMessage').textContent = msg; closeDrawer(true); showView('signin'); }
+
+/* ===== Request list ===== */
+function buildFilters() {
+  $('statusFilter').innerHTML = '<option value="open">All open requests</option><option value="all">All requests</option>' +
+    STATUSES.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+}
+
+async function loadRequests() {
+  $('rows').innerHTML = '<tr><td colspan="8" class="center-msg">Loading requests…</td></tr>';
+  try {
+    const { requests } = await api('/api/admin/requests');
+    all = requests;
+    renderQueue();
+    renderRows();
+    const pending = read(OPEN_KEY, true);
+    if (pending) { store(OPEN_KEY, null, true); if (all.find(r => r.id === pending)) openRequest(pending); }
+  } catch (e) {
+    if (!e.silent) $('rows').innerHTML = `<tr><td colspan="8">${esc(e.message)}</td></tr>`;
+  }
+}
+
+function renderQueue() {
+  const open = all.filter(r => !CLOSED.includes(r.status)).length;
+  const fresh = all.filter(r => r.status === 'New').length;
+  const reply = all.filter(awaitingReply).length;
+  const due = all.filter(dueSoon).length;
+  const items = [
+    ['', 'q-open', open, 'Open requests'],
+    ['new', 'q-new', fresh, 'New, not yet reviewed'],
+    ['reply', 'q-reply', reply, 'Awaiting your reply'],
+    ['due', 'q-due', due, 'Deadline within 30 days']
+  ];
+  $('queue').innerHTML = items.map(([key, cls, n, label]) =>
+    `<button type="button" class="${cls}" data-quick="${key}" aria-pressed="${quick === key}"><b>${n}</b><span>${label}</span></button>`).join('');
+}
+
+function filtered() {
+  const q = $('search').value.trim().toLowerCase();
+  const st = $('statusFilter').value;
+  let list = all.filter(r => {
+    if (quick === 'new' && r.status !== 'New') return false;
+    if (quick === 'reply' && !awaitingReply(r)) return false;
+    if (quick === 'due' && !dueSoon(r)) return false;
+    if (!quick) {
+      if (st === 'open' && CLOSED.includes(r.status)) return false;
+      if (st !== 'open' && st !== 'all' && r.status !== st) return false;
+    }
+    if (q && ![r.id, r.title, r.requesterName, r.requesterEmail, r.assignedTo].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const sort = $('sortBy').value;
+  const prioRank = p => ({ Critical: 0, High: 1, Medium: 2, Low: 3 })[p] ?? 4;
+  list.sort((a, b) => {
+    if (sort === 'activity') return lastActivity(b).localeCompare(lastActivity(a));
+    if (sort === 'deadline') {
+      const da = a.hasDeadline === 'Yes' && a.deadlineDate ? a.deadlineDate : '9999';
+      const db = b.hasDeadline === 'Yes' && b.deadlineDate ? b.deadlineDate : '9999';
+      return da.localeCompare(db) || b.createdAt.localeCompare(a.createdAt);
+    }
+    if (sort === 'priority') return prioRank(a.priority) - prioRank(b.priority) || b.createdAt.localeCompare(a.createdAt);
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+  return list;
+}
+
+function renderRows() {
+  const list = filtered();
+  if (!list.length) {
+    $('rows').innerHTML = `<tr><td colspan="8" class="center-msg">${all.length ? 'No requests match these filters.' : 'No requests have been submitted yet. New submissions from the request form appear here.'}</td></tr>`;
+    return;
+  }
+  $('rows').innerHTML = list.map(r => {
+    let timing;
+    if (r.hasDeadline === 'Yes') {
+      const n = daysUntil(r.deadlineDate);
+      timing = `<span class="${dueSoon(r) ? 'due-soon' : ''}">Due ${esc(fmtDay(r.deadlineDate))}</span><span class="sub">${n === null ? '' : n < 0 ? Math.abs(n) + ' days past' : n === 0 ? 'Today' : n + ' days left'}</span>`;
+    } else {
+      timing = `${esc(r.preferredTimeframe || '')}<span class="sub">No fixed deadline</span>`;
+    }
+    return `<tr data-id="${esc(r.id)}" tabindex="0">
+      <td class="id">${esc(r.id)}</td>
+      <td>${esc(r.title)}${awaitingReply(r) ? '<span class="flag">New reply</span>' : ''}<span class="sub">${esc(r.requestType || r.requestKind || '')}</span></td>
+      <td>${esc(r.requesterName)}<span class="sub">${esc(r.requesterEmail)}</span></td>
+      <td><span class="status ${statusClass(r.status)}">${esc(r.status)}</span></td>
+      <td class="prio-${esc(r.priority)}">${esc(r.priority || 'Not set')}</td>
+      <td>${timing}</td>
+      <td>${esc(r.assignedTo || '')}</td>
+      <td>${esc(fmtDate(lastActivity(r)))}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ===== Drawer ===== */
+async function openRequest(id) {
+  try {
+    const { request } = await api('/api/requests/' + encodeURIComponent(id));
+    current = request;
+    triageDirty = false;
+    $('backdrop').hidden = false;
+    $('drawer').hidden = false;
+    document.body.style.overflow = 'hidden';
+    renderDrawer();
+    $('closeDrawer').focus();
+  } catch (e) {
+    if (!e.silent) toast(e.message);
+  }
+}
+
+function closeDrawer(force) {
+  if (!force && triageDirty && !confirm('Discard unsaved triage changes?')) return;
+  $('backdrop').hidden = true;
+  $('drawer').hidden = true;
+  document.body.style.overflow = '';
+  current = null;
+  triageDirty = false;
+}
+
+function renderDrawer() {
+  const r = current;
+  $('drawerId').textContent = r.id;
+  $('drawerTitle').textContent = r.submission.title;
+  $('drawerMeta').textContent = `Submitted by ${r.requester.name} (${r.requester.email}) on ${fmtDateTime(r.createdAt)}`;
+  document.querySelectorAll('#drawerTabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === currentTab)));
+  $('drawerFoot').hidden = currentTab !== 'triage';
+  $('dirtyNote').hidden = !triageDirty;
+  const body = $('drawerBody');
+  if (currentTab === 'request') body.innerHTML = renderSubmission(r);
+  if (currentTab === 'triage') body.innerHTML = renderTriage(r);
+  if (currentTab === 'conversation') body.innerHTML = renderConversation(r);
+  if (currentTab === 'notes') body.innerHTML = renderNotes(r);
+  if (currentTab === 'history') body.innerHTML = renderHistory(r);
+  body.scrollTop = 0;
+}
+
+function renderSubmission(r) {
+  const s = r.submission;
+  const rows = Object.keys(SUB_LABELS).map(k => {
+    let v = s[k];
+    if (Array.isArray(v)) v = v.join(', ');
+    if (k === 'deadlineDate') v = fmtDay(v);
+    if (!v) return '';
+    return `<dt>${esc(SUB_LABELS[k])}</dt><dd>${k === 'links' ? linkify(v) : esc(v)}</dd>`;
+  }).join('');
+  return `<dl class="summary">${rows}</dl>
+    <div class="danger-zone">
+      <p>Delete this request only if it was a test or a duplicate. Deleting cannot be undone; use the Declined status to close a real request.</p>
+      <button type="button" class="btn danger" id="deleteBtn">Delete request</button>
+    </div>`;
+}
+
+function opt(list, val, blank) {
+  return (blank ? `<option value="">${blank}</option>` : '') + list.map(o => `<option${o === val ? ' selected' : ''}>${esc(o)}</option>`).join('');
+}
+function checks(name, list, vals) {
+  return `<div class="checks">${list.map(o => `<label><input type="checkbox" name="${name}" value="${esc(o)}"${(vals || []).includes(o) ? ' checked' : ''}><span>${esc(o)}</span></label>`).join('')}</div>`;
+}
+
+function renderTriage(r) {
+  const t = r.triage;
+  const riskRows = RISKS.map(([key, label]) => `<tr><td>${esc(label)}</td>${RISK_LEVELS.map(l =>
+    `<td><input type="radio" name="${key}" value="${l}" aria-label="${esc(label)}: ${l}"${t[key] === l ? ' checked' : ''}></td>`).join('')}</tr>`).join('');
+  return `<form id="triageForm" onsubmit="return false">
+    <div class="grid">
+      <div class="f"><label for="t-status">Status</label><select id="t-status" name="status">${opt(STATUSES, t.status)}</select></div>
+      <div class="f"><label for="t-priority">Priority</label><select id="t-priority" name="priority">${opt(PRIORITIES, t.priority, 'Not set')}</select></div>
+      <div class="f"><label for="t-assigned">Assigned to</label><input type="text" id="t-assigned" name="assignedTo" value="${esc(t.assignedTo)}" list="staffNames"></div>
+      <div class="f"><label for="t-type">Request type</label><select id="t-type" name="requestType">${opt(REQUEST_TYPES, t.requestType, 'Not set')}</select></div>
+      <div class="f"><label for="t-effort">Level of effort</label><select id="t-effort" name="effort">${opt(EFFORTS, t.effort, 'Not set')}</select></div>
+      <div class="f"></div>
+      <div class="f"><label for="t-start">Target start</label><input type="date" id="t-start" name="targetStart" value="${esc(t.targetStart)}"></div>
+      <div class="f"><label for="t-end">Target completion</label><input type="date" id="t-end" name="targetEnd" value="${esc(t.targetEnd)}"></div>
+    </div>
+    <datalist id="staffNames">${staffList.map(s => `<option value="${esc(s.name)}">`).join('')}</datalist>
+
+    <div class="block">
+      <h3>Risk and complexity</h3>
+      <div class="table-wrap" style="border:0">
+        <table class="risk"><thead><tr><th></th>${RISK_LEVELS.map(l => `<th>${l}</th>`).join('')}</tr></thead><tbody>${riskRows}</tbody></table>
+      </div>
+      <div class="f" style="margin-top:12px"><label for="t-risknotes">Additional risk or complexity factors</label><textarea id="t-risknotes" name="riskNotes">${esc(t.riskNotes)}</textarea></div>
+    </div>
+
+    <div class="block"><h3>Systems affected</h3>${checks('systems', SYSTEMS, t.systems)}</div>
+    <div class="block"><h3>Business areas affected</h3>${checks('businessAreas', BUSINESS_AREAS, t.businessAreas)}</div>
+    <div class="block"><h3>Communication needed for implementation</h3>${checks('communications', COMMUNICATIONS, t.communications)}</div>
+
+    <div class="block">
+      <h3>Scope</h3>
+      <div class="f"><label for="t-in">In scope</label><textarea id="t-in" name="inScope">${esc(t.inScope)}</textarea></div>
+      <div class="f" style="margin-top:12px"><label for="t-out">Out of scope</label><textarea id="t-out" name="outOfScope">${esc(t.outOfScope)}</textarea></div>
+    </div>
+  </form>`;
+}
+
+function collectTriage() {
+  const fd = new FormData($('triageForm'));
+  const t = {};
+  ['status', 'priority', 'assignedTo', 'requestType', 'effort', 'targetStart', 'targetEnd', 'riskNotes', 'inScope', 'outOfScope']
+    .forEach(k => { t[k] = (fd.get(k) || '').toString().trim(); });
+  RISKS.forEach(([k]) => { t[k] = (fd.get(k) || '').toString(); });
+  ['systems', 'businessAreas', 'communications'].forEach(k => { t[k] = fd.getAll(k); });
+  return t;
+}
+
+async function saveTriage() {
+  if (!current || !$('triageForm')) return;
+  const btn = $('saveTriage');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const { request, changed } = await api('/api/admin/requests/' + encodeURIComponent(current.id), { method: 'PUT', body: { triage: collectTriage() } });
+    current = request;
+    triageDirty = false;
+    updateRow(request);
+    renderDrawer();
+    toast(changed ? 'Triage saved.' : 'No changes to save.');
+  } catch (e) {
+    if (!e.silent) toast(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save triage';
+  }
+}
+
+function renderConversation(r) {
+  const msgs = r.conversation.length
+    ? r.conversation.map(m => `<div class="msg ${m.role === 'admin' ? 'admin' : ''}"><header><strong>${esc(m.byName)}</strong>${m.role === 'requester' ? ' (requester)' : ''}, ${esc(fmtDateTime(m.at))}</header><p>${esc(m.text)}</p></div>`).join('')
+    : '<p class="empty">No messages yet. Messages here are visible to the requester under My requests.</p>';
+  return `${msgs}
+    <div class="compose">
+      <label class="label" for="replyText" style="font-weight:600;display:block;margin-bottom:4px">Reply to ${esc(r.requester.name)}</label>
+      <textarea id="replyText" maxlength="4000"></textarea>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn" id="sendReply">Send reply</button>
+        <label style="font-size:.9rem;display:flex;gap:6px;align-items:center"><input type="checkbox" id="markInfo"${r.triage.status === 'Needs information' ? ' checked' : ''}> Set status to Needs information</label>
+      </div>
+      <p class="empty" style="margin-top:10px;font-style:normal;font-size:.85rem">The requester sees replies the next time they open My requests. Email them directly if the reply is time-sensitive.</p>
+    </div>`;
+}
+
+async function sendReply() {
+  const text = $('replyText').value.trim();
+  if (!text) { $('replyText').focus(); return; }
+  const btn = $('sendReply');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    let { request } = await api('/api/requests/' + encodeURIComponent(current.id) + '/comments', { method: 'POST', body: { text } });
+    const wantInfo = $('markInfo').checked;
+    if (wantInfo !== (request.triage.status === 'Needs information')) {
+      const status = wantInfo ? 'Needs information' : (request.triage.status === 'Needs information' ? 'Under review' : request.triage.status);
+      ({ request } = await api('/api/admin/requests/' + encodeURIComponent(current.id), { method: 'PUT', body: { triage: { status } } }));
+    }
+    current = request;
+    updateRow(request);
+    renderDrawer();
+    toast('Reply sent.');
+  } catch (e) {
+    if (!e.silent) toast(e.message);
+    btn.disabled = false; btn.textContent = 'Send reply';
+  }
+}
+
+function renderNotes(r) {
+  const notes = r.notes.length
+    ? r.notes.slice().reverse().map(n => `<div class="msg note"><header><strong>${esc(n.byName)}</strong>, ${esc(fmtDateTime(n.at))}</header><p>${esc(n.text)}</p></div>`).join('')
+    : '<p class="empty">No internal notes yet. Notes are visible only to administrators.</p>';
+  return `<div class="compose" style="margin:0 0 20px">
+      <label for="noteText" style="font-weight:600;display:block;margin-bottom:4px">Add an internal note</label>
+      <textarea id="noteText" maxlength="4000"></textarea>
+      <button type="button" class="btn" id="addNote">Add note</button>
+    </div>${notes}`;
+}
+
+async function addNote() {
+  const text = $('noteText').value.trim();
+  if (!text) { $('noteText').focus(); return; }
+  const btn = $('addNote');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const { request } = await api('/api/admin/requests/' + encodeURIComponent(current.id) + '/notes', { method: 'POST', body: { text } });
+    current = request;
+    updateRow(request);
+    renderDrawer();
+    toast('Note added.');
+  } catch (e) {
+    if (!e.silent) toast(e.message);
+    btn.disabled = false; btn.textContent = 'Add note';
+  }
+}
+
+function showVal(field, v) {
+  if (Array.isArray(v)) return v.length ? v.join(', ') : 'none';
+  if (v === '' || v === null || v === undefined) return 'blank';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return fmtDay(v);
+  return String(v).length > 120 ? String(v).slice(0, 120) + '…' : String(v);
+}
+
+function renderHistory(r) {
+  if (!r.history.length) return '<p class="empty">No history recorded.</p>';
+  return `<ul class="history">${r.history.slice().reverse().map(h => `<li>
+    <div><strong>${esc(h.action)}</strong></div>
+    <div class="when">${esc(h.byName || h.by)}, ${esc(fmtDateTime(h.at))}</div>
+    ${h.changes && h.changes.length ? `<ul>${h.changes.map(c => `<li>${esc(TRIAGE_LABELS[c.field] || c.field)}: <del>${esc(showVal(c.field, c.from))}</del> to ${esc(showVal(c.field, c.to))}</li>`).join('')}</ul>` : ''}
+  </li>`).join('')}</ul>`;
+}
+
+async function deleteCurrent() {
+  if (!current) return;
+  const typed = prompt(`Type ${current.id} to permanently delete this request.`);
+  if (typed !== current.id) { if (typed !== null) toast('The ID did not match. Nothing was deleted.'); return; }
+  try {
+    await api('/api/admin/requests/' + encodeURIComponent(current.id), { method: 'DELETE' });
+    all = all.filter(r => r.id !== current.id);
+    closeDrawer(true);
+    renderQueue(); renderRows();
+    toast('Request deleted.');
+  } catch (e) {
+    if (!e.silent) toast(e.message);
+  }
+}
+
+function updateRow(record) {
+  const last = record.conversation[record.conversation.length - 1];
+  const summary = {
+    id: record.id, title: record.submission.title, requesterEmail: record.requester.email, requesterName: record.requester.name,
+    createdAt: record.createdAt, updatedAt: record.updatedAt, status: record.triage.status, priority: record.triage.priority,
+    requestKind: record.submission.requestKind, requestType: record.triage.requestType, effort: record.triage.effort,
+    assignedTo: record.triage.assignedTo, frequency: record.submission.frequency, hasDeadline: record.submission.hasDeadline,
+    deadlineDate: record.submission.deadlineDate, preferredTimeframe: record.submission.preferredTimeframe,
+    lastMessageAt: last ? last.at : '', lastMessageRole: last ? last.role : ''
+  };
+  const i = all.findIndex(r => r.id === record.id);
+  if (i >= 0) all[i] = summary; else all.unshift(summary);
+  renderQueue(); renderRows();
+}
+
+/* ===== CSV export ===== */
+async function exportCsv() {
+  const btn = $('exportBtn');
+  btn.disabled = true; btn.textContent = 'Preparing…';
+  try {
+    const { requests } = await api('/api/admin/export');
+    const cols = [
+      ['ID', r => r.id], ['Submitted', r => r.createdAt], ['Last updated', r => r.updatedAt],
+      ['Requester', r => r.requester.name], ['Requester email', r => r.requester.email], ['Title', r => r.submission.title]
+    ];
+    Object.keys(SUB_LABELS).forEach(k => cols.push([SUB_LABELS[k], r => r.submission[k]]));
+    Object.keys(TRIAGE_LABELS).forEach(k => cols.push([TRIAGE_LABELS[k], r => r.triage[k]]));
+    cols.push(['Messages', r => r.conversation.length], ['Internal notes', r => r.notes.length]);
+    const cell = v => { v = Array.isArray(v) ? v.join('; ') : (v ?? ''); v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const csv = [cols.map(c => cell(c[0])).join(',')].concat(requests.map(r => cols.map(c => cell(c[1](r))).join(','))).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'project-requests-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (e) {
+    if (!e.silent) toast(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Export CSV';
+  }
+}
+
+/* ===== Staff directory ===== */
+function renderStaff() {
+  $('staffRows').innerHTML = staffList.map((s, i) => `<tr data-i="${i}">
+    <td><input type="text" data-k="name" value="${esc(s.name)}" aria-label="Name"></td>
+    <td><input type="text" data-k="emails" value="${esc((s.emails || []).join(', '))}" aria-label="Email addresses for ${esc(s.name)}" placeholder="name@clearhq.org"></td>
+    <td><button type="button" class="linkbtn" data-remove="${i}">Remove</button></td>
+  </tr>`).join('') || '<tr><td colspan="3" class="center-msg">The directory is empty. Add the first person below.</td></tr>';
+}
+function readStaffTable() {
+  return [...document.querySelectorAll('#staffRows tr[data-i]')].map(tr => ({
+    name: tr.querySelector('[data-k=name]').value.trim(),
+    emails: tr.querySelector('[data-k=emails]').value.split(',').map(e => e.trim()).filter(Boolean)
+  }));
+}
+async function saveStaff() {
+  const btn = $('saveStaff');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const { staff } = await api('/api/admin/config', { method: 'PUT', body: { staff: readStaffTable() } });
+    staffList = staff;
+    renderStaff();
+    toast('Directory saved.');
+  } catch (e) {
+    if (!e.silent) toast(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save directory';
+  }
+}
+
+/* ===== Events ===== */
+document.addEventListener('click', ev => {
+  const nav = ev.target.closest('#nav button[data-view]');
+  if (nav) { showView(nav.dataset.view); if (nav.dataset.view === 'staff') renderStaff(); return; }
+  const q = ev.target.closest('[data-quick]');
+  if (q) { quick = quick === q.dataset.quick ? '' : q.dataset.quick; renderQueue(); renderRows(); return; }
+  const row = ev.target.closest('#rows tr[data-id]');
+  if (row) { openRequest(row.dataset.id); return; }
+  const tab = ev.target.closest('#drawerTabs button');
+  if (tab) {
+    if (currentTab === 'triage' && tab.dataset.tab !== 'triage' && triageDirty && !confirm('Discard unsaved triage changes?')) return;
+    if (tab.dataset.tab !== 'triage') triageDirty = false;
+    currentTab = tab.dataset.tab; renderDrawer(); return;
+  }
+  const rm = ev.target.closest('[data-remove]');
+  if (rm) { staffList = readStaffTable(); staffList.splice(Number(rm.dataset.remove), 1); renderStaff(); return; }
+  if (ev.target.id === 'deleteBtn') deleteCurrent();
+  if (ev.target.id === 'sendReply') sendReply();
+  if (ev.target.id === 'addNote') addNote();
+});
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Enter') { const row = ev.target.closest && ev.target.closest('#rows tr[data-id]'); if (row) openRequest(row.dataset.id); }
+  if (ev.key === 'Escape' && !$('drawer').hidden) closeDrawer();
+});
+$('drawerBody').addEventListener('input', ev => { if (ev.target.closest('#triageForm')) { triageDirty = true; $('dirtyNote').hidden = false; } });
+$('drawerBody').addEventListener('change', ev => { if (ev.target.closest('#triageForm')) { triageDirty = true; $('dirtyNote').hidden = false; } });
+$('saveTriage').addEventListener('click', saveTriage);
+$('closeDrawer').addEventListener('click', () => closeDrawer());
+$('backdrop').addEventListener('click', () => closeDrawer());
+$('search').addEventListener('input', renderRows);
+$('statusFilter').addEventListener('change', () => { quick = ''; renderQueue(); renderRows(); });
+$('sortBy').addEventListener('change', renderRows);
+$('refreshBtn').addEventListener('click', loadRequests);
+$('exportBtn').addEventListener('click', exportCsv);
+$('addStaff').addEventListener('click', () => { staffList = readStaffTable(); staffList.push({ name: '', emails: [] }); renderStaff(); const inputs = document.querySelectorAll('#staffRows [data-k=name]'); if (inputs.length) inputs[inputs.length - 1].focus(); });
+$('saveStaff').addEventListener('click', saveStaff);
+$('signInBtn').addEventListener('click', () => { location.href = LOGIN_URL + '/?return=' + encodeURIComponent(location.origin + location.pathname); });
+$('signOut').addEventListener('click', () => { store(TOKEN_KEY, null); location.href = LOGIN_URL + '/cdn-cgi/access/logout'; });
+
+/* ===== Start ===== */
+async function init() {
+  if (!read(TOKEN_KEY)) { showSignIn(); return; }
+  try {
+    me = await api('/api/me');
+    if (!me.isAdmin) { showView('denied'); return; }
+    const cfg = await api('/api/config');
+    staffList = cfg.staff || [];
+  } catch (e) {
+    if (!e.silent) { $('errorMessage').textContent = e.message; showView('error'); }
+    return;
+  }
+  $('nav').hidden = false;
+  buildFilters();
+  showView('requests');
+  loadRequests();
+}
+init();
+</script>
+</body>
+</html>
