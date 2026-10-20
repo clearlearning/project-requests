@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Request | CLEAR</title>
+<link rel="icon" type="image/png" href="https://assets-002.noviams.com/novi-file-uploads/clear/structure/clearlogo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --burgundy:#64092C; --burgundy-deep:#4a0620; --gold:#DDA838; --gold-soft:#f7ebcf;
+  --charcoal:#484848; --blue:#084D78; --ink:#2b2b2b; --muted:#666;
+  --paper:#fff; --ground:#f5f6f7; --line:#d9dbde; --line-strong:#b9bcc0;
+  --error:#a3261b; --error-soft:#fbecea; --ok:#2e6b3a; --ok-soft:#e8f3ea;
+  --radius:6px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;font-family:"Open Sans","Trebuchet MS",Arial,sans-serif;font-size:16px;line-height:1.55;color:var(--ink);background:var(--ground)}
+a{color:var(--blue)}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+[hidden]{display:none !important}
+
+/* Masthead */
+.masthead{background:var(--burgundy);border-bottom:4px solid var(--gold);color:#fff}
+.masthead-inner{max-width:1120px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;margin-right:auto}
+.brand img{width:40px;height:40px;border-radius:50%;background:#fff}
+.brand span{font-size:1.1rem;font-weight:700;letter-spacing:.01em}
+.nav{display:flex;gap:4px;flex-wrap:wrap}
+.nav button,.nav a{background:none;border:0;color:#fff;font:inherit;font-size:.92rem;font-weight:600;padding:8px 12px;border-radius:var(--radius);cursor:pointer;text-decoration:none}
+.nav button:hover,.nav a:hover{background:rgba(255,255,255,.12)}
+.nav button[aria-current="page"]{background:rgba(255,255,255,.18);box-shadow:inset 0 -3px 0 var(--gold)}
+.who{font-size:.85rem;opacity:.9;width:100%;text-align:right}
+@media (min-width:860px){.who{width:auto}}
+
+/* Layout */
+.wrap{max-width:1120px;margin:0 auto;padding:32px 24px 80px}
+.intro{max-width:720px;margin:0 0 28px}
+.intro h1{font-size:2rem;line-height:1.2;color:var(--burgundy);margin:0 0 10px}
+.intro p{margin:0;color:var(--charcoal);font-size:1.02rem}
+.layout{display:grid;grid-template-columns:1fr;gap:32px}
+@media (min-width:900px){.layout{grid-template-columns:220px minmax(0,720px)}}
+
+/* Progress rail (the sections are a real sequence) */
+.rail{display:none}
+@media (min-width:900px){.rail{display:block;position:sticky;top:24px;align-self:start}}
+.rail ol{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}
+.rail li{margin:0}
+.rail a{display:flex;gap:10px;align-items:flex-start;padding:10px 0 10px 16px;margin-left:-2px;border-left:2px solid transparent;text-decoration:none;color:var(--charcoal);font-size:.92rem}
+.rail a:hover{color:var(--burgundy)}
+.rail a.active{border-left-color:var(--burgundy);color:var(--burgundy);font-weight:600}
+.rail .mark{flex:0 0 22px;height:22px;border-radius:50%;border:2px solid var(--line-strong);display:grid;place-items:center;font-size:.72rem;font-weight:700;color:var(--muted);background:var(--paper)}
+.rail .done .mark{background:var(--gold);border-color:var(--gold);color:var(--burgundy-deep)}
+.rail .has-error .mark{border-color:var(--error);color:var(--error)}
+.rail small{display:block;color:var(--muted);font-weight:400;font-size:.78rem}
+
+/* Form */
+form{margin:0}
+fieldset{border:0;margin:0 0 20px;padding:28px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius)}
+legend{float:left;width:100%;padding:0;margin:0 0 4px;font-size:1.3rem;font-weight:700;color:var(--burgundy)}
+legend + *{clear:both}
+.section-note{margin:0 0 20px;color:var(--muted);font-size:.92rem}
+.field{margin:0 0 22px}
+.field:last-child{margin-bottom:0}
+.label{display:block;font-weight:600;margin:0 0 4px}
+.req{color:var(--burgundy);font-weight:700;margin-left:2px}
+.opt{color:var(--muted);font-weight:400;font-size:.85rem;margin-left:4px}
+.hint{display:block;color:var(--muted);font-size:.88rem;margin:0 0 8px}
+input[type=text],input[type=date],select,textarea{width:100%;font:inherit;font-size:.98rem;color:var(--ink);background:#fff;border:1px solid var(--line-strong);border-radius:var(--radius);padding:10px 12px}
+textarea{min-height:110px;resize:vertical;line-height:1.5}
+select{appearance:auto}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);outline:2px solid rgba(8,77,120,.25);outline-offset:0}
+.field.invalid input,.field.invalid select,.field.invalid textarea{border-color:var(--error);background:var(--error-soft)}
+.error-msg{display:none;color:var(--error);font-size:.88rem;font-weight:600;margin:6px 0 0}
+.field.invalid .error-msg{display:block}
+.choices{display:grid;gap:8px;grid-template-columns:1fr}
+@media (min-width:560px){.choices.cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:760px){.choices.cols3{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.choice{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius);cursor:pointer;background:#fff}
+.choice:hover{border-color:var(--line-strong)}
+.choice input{margin:3px 0 0;accent-color:var(--burgundy);width:16px;height:16px;flex:0 0 16px}
+.choice:has(input:checked){border-color:var(--burgundy);background:#fbf5f7}
+.choice strong{display:block;font-weight:600}
+.choice span small{display:block;color:var(--muted);font-size:.85rem}
+.field.invalid .choice{border-color:var(--error)}
+.split{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:560px){.split{grid-template-columns:1fr 1fr}}
+.conditional{border-left:3px solid var(--gold);padding-left:16px;margin-left:2px}
+.identity{display:flex;gap:12px;align-items:center;padding:12px 14px;background:var(--ground);border-radius:var(--radius);margin:0 0 22px}
+.identity .initials{width:40px;height:40px;border-radius:50%;background:var(--burgundy);color:#fff;display:grid;place-items:center;font-weight:700;flex:0 0 40px}
+.identity p{margin:0;font-size:.92rem;color:var(--charcoal)}
+.identity strong{display:block;color:var(--ink);font-size:1rem}
+
+.submit-bar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:20px 0 0}
+.btn{font:inherit;font-weight:600;border-radius:var(--radius);padding:11px 22px;cursor:pointer;border:2px solid var(--burgundy);background:var(--burgundy);color:#fff;font-size:1rem}
+.btn:hover{background:var(--burgundy-deep);border-color:var(--burgundy-deep)}
+.btn[disabled]{opacity:.6;cursor:wait}
+.btn.secondary{background:#fff;color:var(--burgundy)}
+.btn.secondary:hover{background:#fbf5f7}
+.btn.small{padding:7px 14px;font-size:.9rem}
+.linkbtn{background:none;border:0;color:var(--blue);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+.form-alert{display:none;margin:0 0 20px;padding:14px 16px;border-radius:var(--radius);background:var(--error-soft);color:var(--error);border:1px solid #e3b5af;font-weight:600}
+.form-alert.show{display:block}
+.draft-note{color:var(--muted);font-size:.85rem}
+
+/* Panels */
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:32px;max-width:720px}
+.panel h1{color:var(--burgundy);margin:0 0 10px;font-size:1.7rem;line-height:1.25}
+.panel p{margin:0 0 16px;color:var(--charcoal)}
+.ref{display:inline-block;font-size:1.4rem;font-weight:700;color:var(--burgundy);background:var(--gold-soft);padding:6px 14px;border-radius:var(--radius);margin:0 0 16px}
+.center-msg{text-align:center;padding:80px 24px;color:var(--muted)}
+
+/* My requests */
+.mine-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:0 0 20px}
+.mine-head h1{color:var(--burgundy);margin:0;font-size:2rem}
+.req-list{list-style:none;margin:0;padding:0;max-width:880px}
+.req-item{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);margin:0 0 12px}
+.req-toggle{display:grid;grid-template-columns:1fr auto;gap:6px 16px;width:100%;text-align:left;background:none;border:0;font:inherit;color:inherit;padding:16px 20px;cursor:pointer}
+.req-toggle:hover .req-title{color:var(--burgundy)}
+.req-title{font-weight:700;font-size:1.05rem}
+.req-meta{color:var(--muted);font-size:.86rem;grid-column:1}
+.req-toggle .status{grid-row:1 / span 2;grid-column:2;align-self:center}
+.req-detail{border-top:1px solid var(--line);padding:20px}
+.status{display:inline-block;font-size:.8rem;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.s-new{background:#e8eef4;color:var(--blue);border-color:#c3d3e2}
+.s-review{background:#f1eef7;color:#4b3a78;border-color:#d8d0ea}
+.s-info{background:var(--gold-soft);color:#7a5408;border-color:#ecd39b}
+.s-active{background:#fbf0f3;color:var(--burgundy);border-color:#e8c6d1}
+.s-hold{background:#eeeeee;color:var(--charcoal);border-color:#d6d6d6}
+.s-done{background:var(--ok-soft);color:var(--ok);border-color:#bfdcc5}
+.s-declined{background:#f3f3f3;color:#777;border-color:#ddd}
+dl.summary{display:grid;grid-template-columns:1fr;gap:4px 20px;margin:0 0 20px}
+@media (min-width:640px){dl.summary{grid-template-columns:200px 1fr}}
+dl.summary dt{font-weight:600;color:var(--charcoal);font-size:.9rem}
+dl.summary dd{margin:0 0 10px;white-space:pre-wrap;word-break:break-word}
+.thread h3{font-size:1rem;color:var(--burgundy);margin:0 0 10px}
+.msg{padding:12px 14px;border-radius:var(--radius);margin:0 0 10px;background:var(--ground);border-left:3px solid var(--line-strong)}
+.msg.admin{background:#fbf5f7;border-left-color:var(--burgundy)}
+.msg header{font-size:.84rem;color:var(--muted);margin:0 0 4px}
+.msg header strong{color:var(--ink)}
+.msg p{margin:0;white-space:pre-wrap;word-break:break-word}
+.empty{color:var(--muted);font-style:italic;margin:0 0 12px}
+.reply textarea{min-height:80px;margin:0 0 10px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:var(--radius);font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.2);z-index:50}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <a class="brand" href="#new" data-go="new">
+      <img src="https://assets-002.noviams.com/novi-file-uploads/clear/structure/clearlogo.png" alt="CLEAR logo">
+      <span>Project Requests</span>
+    </a>
+    <nav class="nav" id="nav" hidden>
+      <button type="button" data-view="new">New request</button>
+      <button type="button" data-view="mine">My requests</button>
+      <a id="adminLink" href="admin-dashboard.html" hidden>Admin dashboard</a>
+      <button type="button" id="signOut">Sign out</button>
+    </nav>
+    <div class="who" id="who"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="view-loading" class="center-msg">Loading…</div>
+
+  <section id="view-signin" class="panel" hidden>
+    <h1>Sign in to submit a project request</h1>
+    <p id="signinMessage">Use your CLEAR email address. You will receive a one-time code to confirm your identity.</p>
+    <button type="button" class="btn" id="signInBtn">Sign in</button>
+  </section>
+
+  <section id="view-error" class="panel" hidden>
+    <h1>The request form could not load</h1>
+    <p id="errorMessage"></p>
+    <button type="button" class="btn secondary" onclick="location.reload()">Try again</button>
+  </section>
+
+  <section id="view-new" hidden>
+    <div class="intro">
+      <h1>Request a project</h1>
+      <p>Use this form to request a new tool, a change to an existing system, an automation, or a report. Answer what you know. After you submit, the Learning &amp; Systems team assesses scope, effort, and risk, and follows up with any questions.</p>
+    </div>
+
+    <div class="layout">
+      <nav class="rail" aria-label="Form sections">
+        <ol id="rail">
+          <li><a href="#sec-about" data-sec="about"><span class="mark">1</span><span>About you</span></a></li>
+          <li><a href="#sec-request" data-sec="request"><span class="mark">2</span><span>The request</span></a></li>
+          <li><a href="#sec-success" data-sec="success"><span class="mark">3</span><span>What success looks like</span></a></li>
+          <li><a href="#sec-timing" data-sec="timing"><span class="mark">4</span><span>Timing</span></a></li>
+          <li><a href="#sec-support" data-sec="support"><span class="mark">5</span><span>Supporting information<small>Optional</small></span></a></li>
+        </ol>
+      </nav>
+
+      <form id="requestForm" novalidate>
+        <div class="form-alert" id="formAlert" role="alert"></div>
+
+        <fieldset id="sec-about" data-sec="about">
+          <legend>About you</legend>
+          <div class="identity" id="identity"></div>
+
+          <div class="field" data-field="requesterName" id="nameField" hidden>
+            <label class="label" for="requesterName">Your name<span class="req" aria-hidden="true">*</span></label>
+            <span class="hint">Your email address is not yet in the staff directory, so enter your name as you would like it to appear.</span>
+            <input type="text" id="requesterName" name="requesterName" maxlength="120" autocomplete="name">
+            <p class="error-msg">Enter your name.</p>
+          </div>
+
+          <div class="field" data-field="processOwners">
+            <span class="label" id="ownersLabel">Process owner(s)<span class="opt">Optional</span></span>
+            <span class="hint">Who is responsible for the process this request affects? Select all that apply.</span>
+            <div class="choices cols3" id="ownerChoices" role="group" aria-labelledby="ownersLabel"></div>
+          </div>
+
+          <div class="field" data-field="leadershipAware">
+            <span class="label" id="awareLabel">Is your supervisor or a member of leadership aware of this request?<span class="opt">Optional</span></span>
+            <div class="choices cols3" role="radiogroup" aria-labelledby="awareLabel">
+              <label class="choice"><input type="radio" name="leadershipAware" value="Yes"><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="leadershipAware" value="No"><span>No</span></label>
+              <label class="choice"><input type="radio" name="leadershipAware" value="Not applicable"><span>Not applicable</span></label>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset id="sec-request" data-sec="request">
+          <legend>The request</legend>
+
+          <div class="field" data-field="title">
+            <label class="label" for="title">Request title<span class="req" aria-hidden="true">*</span></label>
+            <span class="hint">A short name for the request, such as “Automate instructor contract reminders.”</span>
+            <input type="text" id="title" name="title" maxlength="120" required>
+            <p class="error-msg">Enter a short title.</p>
+          </div>
+
+          <div class="field" data-field="requestKind">
+            <span class="label" id="kindLabel">What kind of request is this?<span class="req" aria-hidden="true">*</span></span>
+            <div class="choices" role="radiogroup" aria-labelledby="kindLabel">
+              <label class="choice"><input type="radio" name="requestKind" value="Change something that already exists"><span><strong>Change something that already exists</strong><small>Fix, adjust, or extend a current tool, system, or process.</small></span></label>
+              <label class="choice"><input type="radio" name="requestKind" value="Build something new"><span><strong>Build something new</strong><small>A new tool, automation, report, or process.</small></span></label>
+              <label class="choice"><input type="radio" name="requestKind" value="Not sure"><span><strong>Not sure</strong><small>Describe the need and the team will determine the best approach.</small></span></label>
+            </div>
+            <p class="error-msg">Select the kind of request.</p>
+          </div>
+
+          <div class="field conditional" data-field="existingTool" id="existingToolField" hidden>
+            <label class="label" for="existingTool">Which tool, system, or process?<span class="opt">Optional</span></label>
+            <input type="text" id="existingTool" name="existingTool" maxlength="200">
+          </div>
+
+          <div class="field" data-field="problem">
+            <label class="label" for="problem">What problem or opportunity does this address?<span class="req" aria-hidden="true">*</span></label>
+            <span class="hint">Describe what is happening today and why it needs to change.</span>
+            <textarea id="problem" name="problem" maxlength="6000" required></textarea>
+            <p class="error-msg">Describe the problem or opportunity.</p>
+          </div>
+
+          <div class="field" data-field="currentProcess">
+            <label class="label" for="currentProcess">How is this handled today?<span class="opt">Optional</span></label>
+            <span class="hint">Include workarounds, spreadsheets, or manual steps. Leave blank if there is no current process.</span>
+            <textarea id="currentProcess" name="currentProcess" maxlength="6000"></textarea>
+          </div>
+
+          <div class="split">
+            <div class="field" data-field="frequency">
+              <label class="label" for="frequency">How often does this come up?<span class="req" aria-hidden="true">*</span></label>
+              <select id="frequency" name="frequency" required></select>
+              <p class="error-msg">Select how often this comes up.</p>
+            </div>
+            <div class="field" data-field="timePerOccurrence">
+              <label class="label" for="timePerOccurrence">About how long does it take each time?<span class="opt">Optional</span></label>
+              <select id="timePerOccurrence" name="timePerOccurrence"></select>
+            </div>
+          </div>
+
+          <div class="field" data-field="affected">
+            <span class="label" id="affectedLabel">Who is affected?<span class="opt">Optional</span></span>
+            <span class="hint">Select everyone who would notice a difference once this is done.</span>
+            <div class="choices cols" id="affectedChoices" role="group" aria-labelledby="affectedLabel"></div>
+          </div>
+        </fieldset>
+
+        <fieldset id="sec-success" data-sec="success">
+          <legend>What success looks like</legend>
+
+          <div class="field" data-field="definitionOfDone">
+            <label class="label" for="definitionOfDone">How will you know this request is done?<span class="req" aria-hidden="true">*</span></label>
+            <span class="hint">Describe what you will be able to do, or what will be different, once this is complete.</span>
+            <textarea id="definitionOfDone" name="definitionOfDone" maxlength="6000" required></textarea>
+            <p class="error-msg">Describe what done looks like.</p>
+          </div>
+
+          <div class="field" data-field="suggestedSolution">
+            <label class="label" for="suggestedSolution">Do you have a solution in mind?<span class="opt">Optional</span></label>
+            <span class="hint">Share any ideas, examples from other organizations, or tools you have seen work.</span>
+            <textarea id="suggestedSolution" name="suggestedSolution" maxlength="6000"></textarea>
+          </div>
+        </fieldset>
+
+        <fieldset id="sec-timing" data-sec="timing">
+          <legend>Timing</legend>
+
+          <div class="field" data-field="hasDeadline">
+            <span class="label" id="deadlineLabel">Is there a fixed deadline?<span class="req" aria-hidden="true">*</span></span>
+            <span class="hint">A fixed deadline is a date that cannot move, such as an event, a board meeting, or a contractual obligation.</span>
+            <div class="choices cols" role="radiogroup" aria-labelledby="deadlineLabel">
+              <label class="choice"><input type="radio" name="hasDeadline" value="Yes"><span>Yes</span></label>
+              <label class="choice"><input type="radio" name="hasDeadline" value="No"><span>No</span></label>
+            </div>
+            <p class="error-msg">Indicate whether there is a fixed deadline.</p>
+          </div>
+
+          <div class="conditional" id="deadlineYes" hidden>
+            <div class="split">
+              <div class="field" data-field="deadlineDate">
+                <label class="label" for="deadlineDate">Deadline date<span class="req" aria-hidden="true">*</span></label>
+                <input type="date" id="deadlineDate" name="deadlineDate">
+                <p class="error-msg">Enter the deadline date.</p>
+              </div>
+              <div class="field" data-field="deadlineDriver">
+                <label class="label" for="deadlineDriver">What is driving the deadline?<span class="req" aria-hidden="true">*</span></label>
+                <select id="deadlineDriver" name="deadlineDriver"></select>
+                <p class="error-msg">Select what is driving the deadline.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="conditional" id="deadlineNo" hidden>
+            <div class="field" data-field="preferredTimeframe">
+              <label class="label" for="preferredTimeframe">Preferred timeframe<span class="req" aria-hidden="true">*</span></label>
+              <select id="preferredTimeframe" name="preferredTimeframe"></select>
+              <p class="error-msg">Select a preferred timeframe.</p>
+            </div>
+          </div>
+
+          <div class="field" data-field="timingDetails" id="timingDetailsField" hidden>
+            <label class="label" for="timingDetails">Timing details<span class="opt">Optional</span></label>
+            <span class="hint">Related dates, milestones, or anything else that affects scheduling.</span>
+            <textarea id="timingDetails" name="timingDetails" maxlength="3000"></textarea>
+          </div>
+        </fieldset>
+
+        <fieldset id="sec-support" data-sec="support">
+          <legend>Supporting information</legend>
+          <p class="section-note">Both fields in this section are optional.</p>
+
+          <div class="field" data-field="links">
+            <label class="label" for="links">Links to supporting files</label>
+            <span class="hint">Paste SharePoint or OneDrive share links, one per line. Confirm that the links are shared with the Learning &amp; Systems team.</span>
+            <textarea id="links" name="links" maxlength="4000" placeholder="https://"></textarea>
+          </div>
+
+          <div class="field" data-field="additionalContext">
+            <label class="label" for="additionalContext">Anything else the team should know?</label>
+            <textarea id="additionalContext" name="additionalContext" maxlength="6000"></textarea>
+          </div>
+        </fieldset>
+
+        <div class="submit-bar">
+          <button type="submit" class="btn" id="submitBtn">Submit request</button>
+          <button type="button" class="linkbtn" id="clearBtn">Clear form</button>
+          <span class="draft-note" id="draftNote" aria-live="polite"></span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section id="view-success" class="panel" hidden>
+    <h1>Request submitted</h1>
+    <div class="ref" id="successRef"></div>
+    <p>The Learning &amp; Systems team has been notified. You can follow the status of this request and reply to any questions under My requests.</p>
+    <div class="submit-bar">
+      <button type="button" class="btn" data-go="mine">View my requests</button>
+      <button type="button" class="btn secondary" data-go="new">Submit another request</button>
+    </div>
+  </section>
+
+  <section id="view-mine" hidden>
+    <div class="mine-head">
+      <h1>My requests</h1>
+      <button type="button" class="btn secondary small" id="refreshMine">Refresh</button>
+    </div>
+    <ul class="req-list" id="mineList"></ul>
+  </section>
+</main>
+
+<script>
+/* ===== Configuration ===== */
+const API_URL = 'https://project-requests-api.avance.workers.dev';
+const LOGIN_URL = 'https://project-requests-login.avance.workers.dev';
+const TOKEN_KEY = 'clear_pr_token';
+const DRAFT_KEY = 'clear_pr_draft';
+
+const OPTIONS = {
+  frequency: ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Once or twice a year', 'Per event or program', 'One-time need'],
+  timePerOccurrence: ['Less than 15 minutes', '15 to 60 minutes', '1 to 4 hours', 'More than 4 hours', 'Not sure'],
+  deadlineDriver: ['Event date', 'Board meeting', 'Audit', 'Contractual obligation', 'Leadership request', 'Other'],
+  preferredTimeframe: ['Within the next month', 'This quarter', 'Next quarter', 'Within the next six months', 'Flexible'],
+  affected: ['CLEAR staff', 'Instructors and facilitators', 'Members', 'Committee volunteers', 'Board of Directors', 'CAMS clients', 'Event attendees', 'General public']
+};
+
+const LABELS = {
+  processOwners: 'Process owner(s)', leadershipAware: 'Leadership aware', requestKind: 'Kind of request',
+  existingTool: 'Existing tool or process', problem: 'Problem or opportunity', currentProcess: 'Current process',
+  frequency: 'Frequency', timePerOccurrence: 'Time each occurrence', affected: 'Who is affected',
+  definitionOfDone: 'Definition of done', suggestedSolution: 'Suggested solution', hasDeadline: 'Fixed deadline',
+  deadlineDate: 'Deadline date', deadlineDriver: 'Deadline driver', preferredTimeframe: 'Preferred timeframe',
+  timingDetails: 'Timing details', links: 'Supporting links', additionalContext: 'Additional context'
+};
+
+const SECTIONS = {
+  about: ['requesterName'],
+  request: ['title', 'requestKind', 'problem', 'frequency'],
+  success: ['definitionOfDone'],
+  timing: ['hasDeadline', 'deadlineDate', 'deadlineDriver', 'preferredTimeframe'],
+  support: []
+};
+
+let me = null;
+let staff = [];
+let attempted = false;
+
+/* ===== Storage helpers ===== */
+function store(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+function read(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+
+/* ===== Token capture from login redirect ===== */
+(function captureToken() {
+  const m = location.hash.match(/token=([^&]+)/);
+  if (m) {
+    store(TOKEN_KEY, decodeURIComponent(m[1]));
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+})();
+
+/* ===== API ===== */
+async function api(path, opts = {}) {
+  const headers = { 'Authorization': 'Bearer ' + read(TOKEN_KEY) };
+  if (opts.body) headers['Content-Type'] = 'application/json';
+  let res;
+  try {
+    res = await fetch(API_URL + path, { method: opts.method || 'GET', headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  } catch (e) {
+    throw new Error('The request service could not be reached. Check your connection and try again.');
+  }
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (res.status === 401) {
+    store(TOKEN_KEY, null);
+    showSignIn('Your session has ended. Sign in again to continue.');
+    const err = new Error('unauthorized'); err.silent = true; throw err;
+  }
+  if (!res.ok) throw new Error((data && data.error) || 'The request could not be completed (' + res.status + ').');
+  return data;
+}
+
+/* ===== Utilities ===== */
+const $ = id => document.getElementById(id);
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function fmtDate(iso) { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+function fmtDateTime(iso) { if (!iso) return ''; const d = new Date(iso); return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+function fmtDay(ymd) { if (!ymd) return ''; const [y, m, d] = ymd.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+function statusClass(s) {
+  return ({ 'New': 's-new', 'Under review': 's-review', 'Needs information': 's-info', 'Approved': 's-active', 'Scheduled': 's-active', 'In progress': 's-active', 'On hold': 's-hold', 'Completed': 's-done', 'Declined': 's-declined' })[s] || 's-new';
+}
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
+}
+function initials(name) { return String(name || '?').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join(''); }
+
+/* ===== Views ===== */
+const VIEWS = ['loading', 'signin', 'error', 'new', 'success', 'mine'];
+function showView(name) {
+  VIEWS.forEach(v => { $('view-' + v).hidden = v !== name; });
+  document.querySelectorAll('#nav button[data-view]').forEach(b => {
+    if (b.dataset.view === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  window.scrollTo(0, 0);
+}
+function showSignIn(message) {
+  $('nav').hidden = true; $('who').textContent = '';
+  if (message) $('signinMessage').textContent = message;
+  showView('signin');
+}
+function go(view) {
+  if (!me) return;
+  if (location.hash !== '#' + view) history.pushState(null, '', '#' + view);
+  render(view);
+}
+function render(view) {
+  if (view === 'mine') { showView('mine'); loadMine(); }
+  else { showView('new'); }
+}
+
+/* ===== Build form options ===== */
+function fillSelect(id, list) {
+  $(id).innerHTML = '<option value="">Select one</option>' + list.map(o => `<option>${esc(o)}</option>`).join('');
+}
+function fillChecks(containerId, name, list) {
+  $(containerId).innerHTML = list.map(o => `<label class="choice"><input type="checkbox" name="${name}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join('');
+}
+function buildForm() {
+  fillSelect('frequency', OPTIONS.frequency);
+  fillSelect('timePerOccurrence', OPTIONS.timePerOccurrence);
+  fillSelect('deadlineDriver', OPTIONS.deadlineDriver);
+  fillSelect('preferredTimeframe', OPTIONS.preferredTimeframe);
+  fillChecks('affectedChoices', 'affected', OPTIONS.affected);
+  fillChecks('ownerChoices', 'processOwners', staff.map(s => s.name).concat(['Not sure']));
+
+  $('identity').innerHTML = `<div class="initials" aria-hidden="true">${esc(initials(me.name))}</div>
+    <p><strong>${esc(me.inDirectory ? me.name : me.email)}</strong>Submitting as ${esc(me.email)}</p>`;
+  $('nameField').hidden = me.inDirectory;
+}
+
+/* ===== Collect, validate, conditionals ===== */
+function collect() {
+  const fd = new FormData($('requestForm'));
+  const data = {};
+  ['requesterName', 'title', 'leadershipAware', 'requestKind', 'existingTool', 'problem', 'currentProcess', 'frequency', 'timePerOccurrence',
+    'definitionOfDone', 'suggestedSolution', 'hasDeadline', 'deadlineDate', 'deadlineDriver', 'preferredTimeframe', 'timingDetails', 'links', 'additionalContext']
+    .forEach(k => { data[k] = (fd.get(k) || '').toString().trim(); });
+  data.processOwners = fd.getAll('processOwners');
+  data.affected = fd.getAll('affected');
+  return data;
+}
+
+function validate(d) {
+  const e = {};
+  if (!me.inDirectory && !d.requesterName) e.requesterName = true;
+  if (!d.title) e.title = true;
+  if (!d.requestKind) e.requestKind = true;
+  if (!d.problem) e.problem = true;
+  if (!d.frequency) e.frequency = true;
+  if (!d.definitionOfDone) e.definitionOfDone = true;
+  if (!d.hasDeadline) e.hasDeadline = true;
+  if (d.hasDeadline === 'Yes') {
+    if (!d.deadlineDate) e.deadlineDate = true;
+    if (!d.deadlineDriver) e.deadlineDriver = true;
+  }
+  if (d.hasDeadline === 'No' && !d.preferredTimeframe) e.preferredTimeframe = true;
+  return e;
+}
+
+function applyConditionals(d) {
+  $('existingToolField').hidden = d.requestKind !== 'Change something that already exists';
+  $('deadlineYes').hidden = d.hasDeadline !== 'Yes';
+  $('deadlineNo').hidden = d.hasDeadline !== 'No';
+  $('timingDetailsField').hidden = !d.hasDeadline;
+}
+
+function paintErrors(errors) {
+  document.querySelectorAll('#requestForm .field[data-field]').forEach(f => {
+    const bad = attempted && !!errors[f.dataset.field];
+    f.classList.toggle('invalid', bad);
+    f.querySelectorAll('input,select,textarea').forEach(el => bad ? el.setAttribute('aria-invalid', 'true') : el.removeAttribute('aria-invalid'));
+  });
+}
+
+function paintRail(d, errors) {
+  Object.entries(SECTIONS).forEach(([sec, fields]) => {
+    const li = document.querySelector(`#rail a[data-sec="${sec}"]`);
+    if (!li) return;
+    const mark = li.querySelector('.mark');
+    const hasErr = fields.some(f => errors[f]);
+    let done;
+    if (sec === 'support') done = !!(d.links || d.additionalContext);
+    else if (sec === 'about') done = !hasErr;
+    else done = !hasErr;
+    li.classList.toggle('done', done);
+    li.classList.toggle('has-error', attempted && hasErr);
+    const n = Object.keys(SECTIONS).indexOf(sec) + 1;
+    mark.textContent = done ? '✓' : (attempted && hasErr ? '!' : n);
+  });
+}
+
+function refresh() {
+  const d = collect();
+  applyConditionals(d);
+  const errors = validate(d);
+  paintErrors(errors);
+  paintRail(d, errors);
+  return { d, errors };
+}
+
+/* ===== Draft ===== */
+let draftTimer = null;
+function saveDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
+    store(DRAFT_KEY, JSON.stringify(collect()));
+    $('draftNote').textContent = 'Draft saved on this device.';
+  }, 500);
+}
+function restoreDraft() {
+  let d;
+  try { d = JSON.parse(read(DRAFT_KEY) || 'null'); } catch (e) { d = null; }
+  if (!d) return;
+  const form = $('requestForm');
+  Object.entries(d).forEach(([k, v]) => {
+    if (Array.isArray(v)) {
+      form.querySelectorAll(`input[name="${k}"]`).forEach(el => { el.checked = v.includes(el.value); });
+    } else {
+      const radios = form.querySelectorAll(`input[type=radio][name="${k}"]`);
+      if (radios.length) radios.forEach(r => { r.checked = r.value === v; });
+      else if (form.elements[k]) form.elements[k].value = v;
+    }
+  });
+  $('draftNote').textContent = 'Your saved draft was restored.';
+}
+function clearForm() {
+  $('requestForm').reset();
+  store(DRAFT_KEY, null);
+  attempted = false;
+  $('formAlert').classList.remove('show');
+  $('draftNote').textContent = '';
+  refresh();
+}
+
+/* ===== Submit ===== */
+async function submitForm(ev) {
+  ev.preventDefault();
+  attempted = true;
+  const { d, errors } = refresh();
+  const count = Object.keys(errors).length;
+  if (count) {
+    $('formAlert').textContent = count === 1 ? 'One required answer is missing. It is highlighted below.' : `${count} required answers are missing. They are highlighted below.`;
+    $('formAlert').classList.add('show');
+    const first = document.querySelector('#requestForm .field.invalid');
+    if (first) { first.scrollIntoView({ block: 'center' }); const el = first.querySelector('input,select,textarea'); if (el) el.focus({ preventScroll: true }); }
+    return;
+  }
+  $('formAlert').classList.remove('show');
+  const btn = $('submitBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    const res = await api('/api/requests', { method: 'POST', body: d });
+    store(DRAFT_KEY, null);
+    $('requestForm').reset();
+    attempted = false;
+    $('draftNote').textContent = '';
+    refresh();
+    $('successRef').textContent = res.id;
+    showView('success');
+  } catch (e) {
+    if (!e.silent) { $('formAlert').textContent = e.message; $('formAlert').classList.add('show'); $('formAlert').scrollIntoView({ block: 'center' }); }
+  } finally {
+    btn.disabled = false; btn.textContent = 'Submit request';
+  }
+}
+
+/* ===== Rail scroll tracking ===== */
+function trackSections() {
+  if (!('IntersectionObserver' in window)) return;
+  const links = document.querySelectorAll('#rail a');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (en.isIntersecting) links.forEach(a => a.classList.toggle('active', a.dataset.sec === en.target.dataset.sec));
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  document.querySelectorAll('#requestForm fieldset').forEach(f => obs.observe(f));
+}
+
+/* ===== My requests ===== */
+async function loadMine() {
+  const list = $('mineList');
+  list.innerHTML = '<li class="center-msg">Loading your requests…</li>';
+  try {
+    const { requests } = await api('/api/requests/mine');
+    if (!requests.length) {
+      list.innerHTML = `<li class="panel"><h1>No requests yet</h1><p>Requests you submit appear here with their current status.</p><button type="button" class="btn" data-go="new">Submit a request</button></li>`;
+      return;
+    }
+    list.innerHTML = requests.map(r => `
+      <li class="req-item" data-id="${esc(r.id)}">
+        <button type="button" class="req-toggle" aria-expanded="false">
+          <span class="req-title">${esc(r.title)}</span>
+          <span class="status ${statusClass(r.status)}">${esc(r.status)}</span>
+          <span class="req-meta">${esc(r.id)}, submitted ${esc(fmtDate(r.createdAt))}, last updated ${esc(fmtDate(r.updatedAt))}${r.lastMessageRole === 'admin' ? '. New message from the Learning &amp; Systems team.' : ''}</span>
+        </button>
+        <div class="req-detail" hidden></div>
+      </li>`).join('');
+  } catch (e) {
+    if (!e.silent) list.innerHTML = `<li class="panel"><p>${esc(e.message)}</p></li>`;
+  }
+}
+
+async function openMine(item) {
+  const btn = item.querySelector('.req-toggle');
+  const detail = item.querySelector('.req-detail');
+  const open = btn.getAttribute('aria-expanded') === 'true';
+  btn.setAttribute('aria-expanded', String(!open));
+  detail.hidden = open;
+  if (open) return;
+  detail.innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    const { request } = await api('/api/requests/' + encodeURIComponent(item.dataset.id));
+    renderMineDetail(detail, request);
+  } catch (e) {
+    if (!e.silent) detail.innerHTML = `<p>${esc(e.message)}</p>`;
+  }
+}
+
+function renderMineDetail(detail, r) {
+  const s = r.submission;
+  const rows = Object.keys(LABELS).map(k => {
+    let v = s[k];
+    if (Array.isArray(v)) v = v.join(', ');
+    if (k === 'deadlineDate') v = fmtDay(v);
+    return v ? `<dt>${esc(LABELS[k])}</dt><dd>${esc(v)}</dd>` : '';
+  }).join('');
+  const msgs = r.conversation.length
+    ? r.conversation.map(m => `<div class="msg ${m.role === 'admin' ? 'admin' : ''}"><header><strong>${esc(m.role === 'admin' ? m.byName + ', Learning & Systems' : 'You')}</strong>, ${esc(fmtDateTime(m.at))}</header><p>${esc(m.text)}</p></div>`).join('')
+    : '<p class="empty">No messages yet. Questions from the Learning &amp; Systems team will appear here.</p>';
+  detail.innerHTML = `
+    <dl class="summary">${rows}</dl>
+    <div class="thread">
+      <h3>Messages</h3>
+      ${msgs}
+      <div class="reply">
+        <label class="label" for="reply-${esc(r.id)}">Send a message about this request</label>
+        <textarea id="reply-${esc(r.id)}" maxlength="4000"></textarea>
+        <button type="button" class="btn small" data-send="${esc(r.id)}">Send message</button>
+      </div>
+    </div>`;
+}
+
+async function sendMine(id, btn) {
+  const ta = $('reply-' + id);
+  const text = ta.value.trim();
+  if (!text) { ta.focus(); return; }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const { request } = await api('/api/requests/' + encodeURIComponent(id) + '/comments', { method: 'POST', body: { text } });
+    const item = btn.closest('.req-item');
+    renderMineDetail(item.querySelector('.req-detail'), request);
+    const pill = item.querySelector('.status');
+    pill.className = 'status ' + statusClass(request.status); pill.textContent = request.status;
+    toast('Message sent.');
+  } catch (e) {
+    if (!e.silent) toast(e.message);
+    btn.disabled = false; btn.textContent = 'Send message';
+  }
+}
+
+/* ===== Events ===== */
+document.addEventListener('click', ev => {
+  const goBtn = ev.target.closest('[data-go]');
+  if (goBtn) { ev.preventDefault(); go(goBtn.dataset.go); return; }
+  const navBtn = ev.target.closest('#nav button[data-view]');
+  if (navBtn) { go(navBtn.dataset.view); return; }
+  const toggle = ev.target.closest('.req-toggle');
+  if (toggle) { openMine(toggle.closest('.req-item')); return; }
+  const send = ev.target.closest('[data-send]');
+  if (send) { sendMine(send.dataset.send, send); return; }
+});
+$('signInBtn').addEventListener('click', () => {
+  location.href = LOGIN_URL + '/?return=' + encodeURIComponent(location.origin + location.pathname);
+});
+$('signOut').addEventListener('click', () => {
+  store(TOKEN_KEY, null);
+  location.href = LOGIN_URL + '/cdn-cgi/access/logout';
+});
+$('refreshMine').addEventListener('click', loadMine);
+$('requestForm').addEventListener('input', () => { refresh(); saveDraft(); });
+$('requestForm').addEventListener('change', () => { refresh(); saveDraft(); });
+$('requestForm').addEventListener('submit', submitForm);
+$('clearBtn').addEventListener('click', () => { if (confirm('Clear every answer on this form?')) clearForm(); });
+window.addEventListener('popstate', () => { if (me) render(location.hash.replace('#', '') || 'new'); });
+
+/* ===== Start ===== */
+async function init() {
+  if (!read(TOKEN_KEY)) { showSignIn(); return; }
+  try {
+    me = await api('/api/me');
+    const cfg = await api('/api/config');
+    staff = cfg.staff || [];
+  } catch (e) {
+    if (!e.silent) { $('errorMessage').textContent = e.message; showView('error'); }
+    return;
+  }
+  $('nav').hidden = false;
+  $('adminLink').hidden = !me.isAdmin;
+  $('who').textContent = me.email;
+  buildForm();
+  restoreDraft();
+  refresh();
+  trackSections();
+  render(location.hash.replace('#', '') || 'new');
+}
+init();
+</script>
+</body>
+</html>
