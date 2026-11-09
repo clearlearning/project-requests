@@ -31,6 +31,7 @@
   .pill.error, .pill.conflict { background:#fbe6e6; color:var(--red); }
   .hbtn { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:6px; padding:5px 12px; font-size:.85em; }
   .hbtn:hover { background:rgba(255,255,255,.25); }
+  a.hbtn { text-decoration:none; display:inline-block; }
   .hbtn:disabled { opacity:.4; cursor:default; }
 
   main { padding:20px 24px 80px; }
@@ -195,7 +196,11 @@
 /* ============================================================
    CONFIG
    ============================================================ */
-const API_BASE = '/project-tracker-api';
+const API_URL = 'https://project-requests.avance.workers.dev';          // the project-requests API Worker
+const LOGIN_URL = 'https://project-requests-login.avance.workers.dev';  // its sign-in Worker
+const TOKEN_KEY = 'clear_pr_token';     // the same sign-in token the request form and admin dashboard use
+const PREFILL_KEY = 'clear_pt_prefill';
+const API_BASE = API_URL + '/api';
 const STAFF = ["Adam Parfitt","Amanda Vance","Candela Gomez","Destiny Shen","Greg Searls","Jodie Markey","Julie Winsor","Matt Grayson","Michelle Lynch","Stephanie Tompson","Tora Stubberud-Dobbs","Virginia Smith","Zephir Griffin"];
 const PROJECT_STATUSES = ['Planning','Active','On Hold','Complete'];
 const TASK_STATUSES = ['Not Started','In Progress','Blocked','Complete'];
@@ -219,6 +224,8 @@ function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
 function pad(n){ return String(n).padStart(2,'0'); }
 function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function rawGet(k){ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } }
+function rawSet(k,v){ try{ v===null? localStorage.removeItem(k) : localStorage.setItem(k,v); }catch(e){} }
 
 function parseDay(s){ if(!s) return null; const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s); if(!m) return null; return Math.floor(Date.UTC(+m[1],+m[2]-1,+m[3])/DAY_MS); }
 function fmtDay(n){ if(n==null) return ''; const d=new Date(n*DAY_MS); return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate()); }
@@ -549,12 +556,29 @@ function checklistOp(pid,nid,op,cid,val){
    PERSISTENCE (autosave, conflicts, polling)
    ============================================================ */
 async function api(path, opts){
-  const res = await fetch(API_BASE+path, Object.assign({ headers:{'Content-Type':'application/json'}, credentials:'same-origin', cache:'no-store' }, opts||{}));
+  const token=rawGet(TOKEN_KEY), headers={ 'Content-Type':'application/json' };
+  if(token) headers['Authorization']='Bearer '+token;
+  let res;
+  try{ res=await fetch(API_BASE+path, Object.assign({ headers, cache:'no-store' }, opts||{})); }
+  catch(e){ const err=new Error('The tracker service could not be reached. Check your connection and try again.'); err.network=true; throw err; }
   let data=null; try{ data=await res.json(); }catch(e){}
+  if(res.status===401){ sessionEnded(); const err=new Error('unauthorized'); err.status=401; err.silent=true; throw err; }
   if(!res.ok){ const err=new Error((data&&(data.detail||data.error))||('HTTP '+res.status)); err.status=res.status; err.data=data; throw err; }
   return data;
 }
+// Signed out (or the session ran out). Keep the screen if there is unsaved work so nothing is lost on screen.
+function sessionEnded(){
+  rawSet(TOKEN_KEY,null);
+  if(state.loaded && (Object.keys(state.dirty).length||Object.keys(state.inflight).length)){ state.sessionExpired=true; }
+  else { state.signIn='Your session has ended. Sign in again to continue.'; }
+  queueRender();
+}
+function captureToken(){
+  const m=location.hash.match(/token=([^&]+)/);
+  if(m){ rawSet(TOKEN_KEY,decodeURIComponent(m[1])); history.replaceState(null,'',location.pathname+location.search); }
+}
 function saveStatus(){
+  if(state.sessionExpired) return {cls:'error',text:'Session ended — sign in to save'};
   if(Object.keys(state.conflicts).length) return {cls:'conflict',text:'Conflict — action needed'};
   if(state.saveError) return {cls:'error',text:'Save failed — retrying'};
   if(Object.keys(state.inflight).length) return {cls:'saving',text:'Saving…'};
@@ -577,6 +601,7 @@ async function saveProject(pid){
     if(p._rev===revAtSend) delete state.dirty[pid]; else state.resave[pid]=true;
   }catch(e){
     if(e.status===409){ state.conflicts[pid]=e.data.current; state.modal={type:'conflict',pid}; queueRender(); }
+    else if(e.status===401){ /* paused until the person signs in again */ }
     else if(e.status===403){ delete state.dirty[pid]; toast('Your account has view-only access, so that change was not saved.'); }
     else { state.saveError=true; clearTimeout(state.timers[pid]); state.timers[pid]=setTimeout(()=>saveProject(pid),4000); }
   } finally {
@@ -636,6 +661,7 @@ function render(){
   const dwEl=document.getElementById('drawer'); const dst=dwEl?dwEl.scrollTop:0;
   document.body.classList.toggle('ro', !canEdit());
 
+  if(state.signIn){ root.innerHTML=signInHtml(state.signIn); return; }
   if(state.authError){ root.innerHTML=authErrorHtml(); return; }
   if(!state.loaded){ root.innerHTML='<div class="empty">Loading projects…</div>'; return; }
 
@@ -666,31 +692,26 @@ function headerHtml(){
     '<button data-act="nav" data-to="projects" class="'+(v==='projects'||v==='project'?'on':'')+'">Projects</button></nav>'+
     '<div class="head-r">'+
       (canEdit()?'<button class="hbtn" data-act="undo" '+(state.undo.length?'':'disabled')+' title="Undo last change (Ctrl+Z)">↶ Undo</button>':'')+
+      (canEdit()?'<a class="hbtn" href="admin-dashboard.html" title="Open the project request dashboard">Requests</a>':'')+
       '<span id="savePill" class="pill '+s.cls+'">'+s.text+'</span>'+
       '<span class="who">'+esc(nameFromEmail(u.email))+(canEdit()?'':' · View only')+'</span>'+
+      (state.sessionExpired?'<button class="hbtn" data-act="sign-in">Sign in</button>':'<button class="hbtn" data-act="sign-out">Sign out</button>')+
     '</div></header>';
 }
 
+function signInHtml(msg){
+  return '<div class="auth-box"><h2>Sign in to the Project Tracker</h2><p>'+esc(msg)+'</p>'+
+    '<p class="muted">Use your CLEAR email address. You will receive a one-time code to confirm your identity.</p>'+
+    '<p><button class="btn btn-primary" data-act="sign-in">Sign in</button></p></div>';
+}
 function authErrorHtml(){
-  const e=state.authError||{}, d=e.data||{}, reason=d.reason||'';
-  const map={
-    not_configured:'The tracker is not fully set up yet. The <span class="code">ACCESS_AUD</span> variable has not been added to the Cloudflare Pages project.',
-    no_token:'This page is not being served through Cloudflare Access. Open it from its protected address (not the pages.dev address) and sign in.',
-    aud_mismatch:'The <span class="code">ACCESS_AUD</span> value does not match the Cloudflare Access application protecting this page. Copy the Audience (AUD) tag again from the Access application.',
-    expired:'Your sign-in has expired. Reload the page to sign in again.',
-    bad_signature:'The sign-in token could not be verified. Reload the page to sign in again.',
-    unknown_key:'The sign-in token could not be verified. Reload the page to sign in again.',
-    no_email:'This sign-in does not include an email address.',
-    iss_mismatch:'The Access team domain does not match. Check the <span class="code">ACCESS_TEAM_DOMAIN</span> variable.'
-  };
-  let msg = map[reason];
-  if(!msg){
-    if(e.status===500 && d.error==='config') msg='The <span class="code">PROJECTS_KV</span> storage binding has not been added to the Cloudflare Pages project.';
-    else if(!e.status) msg='The tracker service could not be reached. If you were signed in earlier, your session may have expired; reload the page to sign in again.';
-    else msg='The tracker service returned an unexpected response ('+esc(e.message)+').';
-  }
+  const e=state.authError||{};
+  let msg;
+  if(e.network) msg=esc(e.message);
+  else if(e.status===404) msg='The request Worker does not have the project routes yet. Add the Project Tracker routes to the Worker, then reload this page.';
+  else if(e.status===403) msg='Your account is not allowed to open the tracker.';
+  else msg='The tracker service returned an unexpected response ('+esc(e.message)+').';
   return '<div class="auth-box"><h2>Project Tracker could not start</h2><p>'+msg+'</p>'+
-    (reason?'<p class="muted">Reason code: <span class="code">'+esc(reason)+'</span></p>':'')+
     '<p><button class="btn btn-primary" data-act="reload">Reload</button></p></div>';
 }
 
@@ -1217,6 +1238,8 @@ document.addEventListener('click',e=>{
     case 'delete-project': { const p=getProject(pid); confirmBox('“'+(p?p.title:'This project')+'” and all of its tasks will be removed from the tracker. A recovery copy is kept in storage, but it cannot be restored from this screen.','Delete project',()=>deleteProject(pid),'Delete this project?'); break; }
     case 'undo': undo(); break;
     case 'reload': location.reload(); break;
+    case 'sign-in': location.href=LOGIN_URL+'/?return='+encodeURIComponent(location.origin+location.pathname); break;
+    case 'sign-out': rawSet(TOKEN_KEY,null); location.href=LOGIN_URL+'/cdn-cgi/access/logout'; break;
   }
 });
 
@@ -1319,14 +1342,19 @@ document.addEventListener('pointercancel',endPointer);
    START
    ============================================================ */
 async function boot(){
-  render();
-  const params=new URLSearchParams(location.search), from=params.get('from');
-  state.prefillRaw = from? decodePrefill(from) : null;
-  if(from) history.replaceState(null,'',location.pathname+location.hash);
+  captureToken();
+  const from=new URLSearchParams(location.search).get('from');
+  if(from){ try{ sessionStorage.setItem(PREFILL_KEY,from); }catch(e){} history.replaceState(null,'',location.pathname+location.hash); }
   handleRoute();
-  try{ state.user=await api('/me'); }catch(e){ state.authError=e; render(); return; }
-  try{ await loadProjects(); }catch(e){ state.authError=e; render(); return; }
+  if(!rawGet(TOKEN_KEY)){ state.signIn='Sign in to view and manage projects.'; render(); return; }
+  render();
+  try{ const me=await api('/me'); state.user={ email:me.email, name:me.name, canEdit:!!me.isAdmin }; }
+  catch(e){ if(!e.silent){ state.authError=e; render(); } return; }
+  try{ await loadProjects(); }
+  catch(e){ if(!e.silent){ state.authError=e; render(); } return; }
   state.loaded=true;
+  let pf=null; try{ pf=sessionStorage.getItem(PREFILL_KEY); sessionStorage.removeItem(PREFILL_KEY); }catch(e){}
+  state.prefillRaw = pf? decodePrefill(pf) : null;
   if(state.prefillRaw) handlePrefill();
   render();
   setInterval(poll,45000);
