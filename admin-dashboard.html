@@ -67,7 +67,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);outline:2px sol
 
 /* Table */
 .table-wrap{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto}
-table{width:100%;border-collapse:collapse;min-width:900px}
+table{width:100%;border-collapse:collapse;min-width:1100px}
 th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-size:.82rem;font-weight:700;color:var(--charcoal);background:#fafafa;white-space:nowrap}
 tbody tr{cursor:pointer}
@@ -88,6 +88,24 @@ td .sub{display:block;color:var(--muted);font-size:.82rem}
 .prio-Critical{color:var(--error);font-weight:700}
 .prio-High{color:var(--burgundy);font-weight:600}
 
+/* Score and effort */
+.score{display:inline-block;min-width:36px;text-align:center;padding:3px 9px;border-radius:6px;font-weight:700;font-size:.9rem}
+.score-none{color:var(--muted);font-size:.85rem}
+.eff{display:inline-block;font-size:.76rem;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.eff-min{background:#e6f4ea;color:#1e6b34}
+.eff-mod{background:#fdf3e3;color:#8a6a1f}
+.eff-sig{background:#fbe6e6;color:#a52a2a}
+.eff-na{background:#eee;color:#777}
+.scorebox{background:#faf7f4;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:var(--radius);padding:14px 16px;margin:0 0 22px}
+.scorebox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.scorebox .score{font-size:1.4rem;padding:6px 14px;min-width:54px}
+.chip{font-size:.8rem;font-weight:700;color:#fff;border-radius:999px;padding:4px 12px}
+.chip.a{background:var(--blue)}
+.chip.r{background:var(--burgundy)}
+.chip.u{background:var(--gold);color:#3b2a00}
+.scorebox .sugg{margin:10px 0 0;font-size:.9rem;color:var(--charcoal)}
+.scorebox .none{margin:0;font-size:.9rem;color:var(--charcoal)}
+
 /* Drawer */
 .backdrop{position:fixed;inset:0;background:rgba(30,20,24,.38);z-index:20}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(820px,100%);background:var(--paper);z-index:21;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,.18)}
@@ -95,7 +113,7 @@ td .sub{display:block;color:var(--muted);font-size:.82rem}
 .drawer-head h2{margin:0;font-size:1.3rem;line-height:1.3;color:var(--ink)}
 .drawer-head .rid{color:var(--burgundy);font-weight:700;font-size:.9rem}
 .drawer-head p{margin:4px 0 0;color:var(--muted);font-size:.88rem}
-.drawer-head .close{margin-left:auto;flex:0 0 auto}
+.drawer-head .head-actions{margin-left:auto;display:flex;gap:8px;flex:0 0 auto}
 .drawer-tabs{display:flex;gap:2px;padding:0 24px;border-bottom:1px solid var(--line);overflow-x:auto}
 .drawer-tabs button{font:inherit;font-weight:600;font-size:.9rem;background:none;border:0;border-bottom:3px solid transparent;padding:12px 12px 9px;cursor:pointer;color:var(--charcoal);white-space:nowrap}
 .drawer-tabs button[aria-selected="true"]{color:var(--burgundy);border-bottom-color:var(--burgundy)}
@@ -205,13 +223,14 @@ dl.summary dd a{word-break:break-all}
         <option value="activity">Recent activity</option>
         <option value="deadline">Deadline soonest</option>
         <option value="priority">Priority</option>
+        <option value="score">Score, highest first</option>
       </select>
       <button type="button" class="btn secondary" id="refreshBtn">Refresh</button>
       <button type="button" class="btn secondary" id="exportBtn">Export CSV</button>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>ID</th><th>Request</th><th>Requester</th><th>Status</th><th>Priority</th><th>Timing</th><th>Assigned to</th><th>Last activity</th></tr></thead>
+        <thead><tr><th>ID</th><th>Request</th><th>Requester</th><th>Status</th><th>Priority</th><th>Score</th><th>Effort</th><th>Timing</th><th>Assigned to</th><th>Last activity</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -241,7 +260,10 @@ dl.summary dd a{word-break:break-all}
       <h2 id="drawerTitle"></h2>
       <p id="drawerMeta"></p>
     </div>
-    <button type="button" class="btn secondary close" id="closeDrawer">Close</button>
+    <div class="head-actions">
+      <button type="button" class="btn" id="createProject">Create project</button>
+      <button type="button" class="btn secondary" id="closeDrawer">Close</button>
+    </div>
   </div>
   <div class="drawer-tabs" role="tablist" id="drawerTabs">
     <button type="button" role="tab" data-tab="request" aria-selected="true">Request</button>
@@ -263,6 +285,10 @@ const API_URL = 'https://project-requests.avance.workers.dev';
 const LOGIN_URL = 'https://project-requests-login.avance.workers.dev';
 const TOKEN_KEY = 'clear_pr_token';
 const OPEN_KEY = 'clear_pr_open';
+
+// Address of the Project Tracker page. Change this if it is published somewhere else.
+const PROJECT_TRACKER_URL = 'https://forms.clearhq.org/project-tracker';
+const PROJECT_NOTE = 'Project Tracker:';
 
 const STATUSES = ['New', 'Under review', 'Needs information', 'Approved', 'Scheduled', 'In progress', 'On hold', 'Completed', 'Declined'];
 const CLOSED = ['Completed', 'Declined'];
@@ -325,6 +351,39 @@ function lastActivity(r) { return [r.updatedAt, r.lastMessageAt].filter(Boolean)
 function awaitingReply(r) { return r.lastMessageRole === 'requester' && !CLOSED.includes(r.status); }
 function dueSoon(r) { const n = r.hasDeadline === 'Yes' ? daysUntil(r.deadlineDate) : null; return n !== null && n <= 30 && !CLOSED.includes(r.status); }
 
+/* ===== Priority score =====
+   Score = business areas + risk + urgency. Effort is shown beside the score but is not part of it.
+   It is calculated once the business areas are chosen and all five risk rows are rated (on the Triage tab). */
+const AREA_HIGH = ['Membership', 'Board of Directors', 'General public'];   // worth 2 points each; every other area is worth 1
+const RISK_POINTS = { 'Low': 1, 'Medium': 2, 'High': 3, 'N/A': 0 };
+const TIMEFRAME_POINTS = { 'Within the next month': 3, 'This quarter': 2, 'Next quarter': 1, 'Within the next six months': 1, 'Flexible': 1 };
+
+function urgencyOf(sub) {
+  if (sub.hasDeadline === 'Yes') {
+    const n = daysUntil(sub.deadlineDate);
+    const base = n === null ? 1 : n <= 14 ? 4 : n <= 30 ? 3 : n <= 90 ? 2 : 1;
+    return base + 2;                                   // a fixed deadline adds 2
+  }
+  return TIMEFRAME_POINTS[sub.preferredTimeframe] || 1;
+}
+function scoreOf(sub, triage) {
+  const areas = (triage.businessAreas || []);
+  const area = areas.reduce((n, a) => n + (AREA_HIGH.includes(a) ? 2 : 1), 0);
+  const rated = RISKS.every(([k]) => RISK_POINTS[triage[k]] !== undefined);
+  const risk = RISKS.reduce((n, [k]) => n + (RISK_POINTS[triage[k]] || 0), 0);
+  const urgency = urgencyOf(sub);
+  return { area, risk, urgency, total: area + risk + urgency, complete: areas.length > 0 && rated };
+}
+function scoreStyle(total) {
+  if (total >= 20) return 'background:#64092C;color:#fff';
+  if (total >= 15) return 'background:#DDA838;color:#3b2a00';
+  if (total >= 10) return 'background:#084D78;color:#fff';
+  return 'background:#e4e4e4;color:#444';
+}
+function suggestedPriority(total) { return total >= 20 ? 'Critical' : total >= 15 ? 'High' : total >= 10 ? 'Medium' : 'Low'; }
+function effortClass(e) { return e === 'Minimal' ? 'eff-min' : e === 'Moderate' ? 'eff-mod' : e === 'Significant' ? 'eff-sig' : 'eff-na'; }
+function scorePill(score) { return score === null || score === undefined ? '<span class="score-none">Not scored</span>' : `<span class="score" style="${scoreStyle(score)}">${score}</span>`; }
+
 (function captureToken() {
   const m = location.hash.match(/token=([^&]+)/);
   if (m) { store(TOKEN_KEY, decodeURIComponent(m[1])); history.replaceState(null, '', location.pathname); return; }
@@ -366,17 +425,32 @@ function buildFilters() {
     STATUSES.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
 }
 
+// One summary row per request. The score needs the full record (triage ratings), so the list loads the export.
+function summaryOf(record) {
+  const last = record.conversation[record.conversation.length - 1];
+  const sc = scoreOf(record.submission, record.triage);
+  return {
+    id: record.id, title: record.submission.title, requesterEmail: record.requester.email, requesterName: record.requester.name,
+    createdAt: record.createdAt, updatedAt: record.updatedAt, status: record.triage.status, priority: record.triage.priority,
+    requestKind: record.submission.requestKind, requestType: record.triage.requestType, effort: record.triage.effort,
+    assignedTo: record.triage.assignedTo, frequency: record.submission.frequency, hasDeadline: record.submission.hasDeadline,
+    deadlineDate: record.submission.deadlineDate, preferredTimeframe: record.submission.preferredTimeframe,
+    lastMessageAt: last ? last.at : '', lastMessageRole: last ? last.role : '',
+    score: sc.complete ? sc.total : null
+  };
+}
+
 async function loadRequests() {
-  $('rows').innerHTML = '<tr><td colspan="8" class="center-msg">Loading requests…</td></tr>';
+  $('rows').innerHTML = '<tr><td colspan="10" class="center-msg">Loading requests…</td></tr>';
   try {
-    const { requests } = await api('/api/admin/requests');
-    all = requests;
+    const { requests } = await api('/api/admin/export');
+    all = requests.map(summaryOf);
     renderQueue();
     renderRows();
     const pending = read(OPEN_KEY, true);
     if (pending) { store(OPEN_KEY, null, true); if (all.find(r => r.id === pending)) openRequest(pending); }
   } catch (e) {
-    if (!e.silent) $('rows').innerHTML = `<tr><td colspan="8">${esc(e.message)}</td></tr>`;
+    if (!e.silent) $('rows').innerHTML = `<tr><td colspan="10">${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -419,6 +493,7 @@ function filtered() {
       return da.localeCompare(db) || b.createdAt.localeCompare(a.createdAt);
     }
     if (sort === 'priority') return prioRank(a.priority) - prioRank(b.priority) || b.createdAt.localeCompare(a.createdAt);
+    if (sort === 'score') return (b.score ?? -1) - (a.score ?? -1) || b.createdAt.localeCompare(a.createdAt);
     return b.createdAt.localeCompare(a.createdAt);
   });
   return list;
@@ -427,7 +502,7 @@ function filtered() {
 function renderRows() {
   const list = filtered();
   if (!list.length) {
-    $('rows').innerHTML = `<tr><td colspan="8" class="center-msg">${all.length ? 'No requests match these filters.' : 'No requests have been submitted yet. New submissions from the request form appear here.'}</td></tr>`;
+    $('rows').innerHTML = `<tr><td colspan="10" class="center-msg">${all.length ? 'No requests match these filters.' : 'No requests have been submitted yet. New submissions from the request form appear here.'}</td></tr>`;
     return;
   }
   $('rows').innerHTML = list.map(r => {
@@ -444,6 +519,8 @@ function renderRows() {
       <td>${esc(r.requesterName)}<span class="sub">${esc(r.requesterEmail)}</span></td>
       <td><span class="status ${statusClass(r.status)}">${esc(r.status)}</span></td>
       <td class="prio-${esc(r.priority)}">${esc(r.priority || 'Not set')}</td>
+      <td>${scorePill(r.score)}</td>
+      <td>${r.effort ? `<span class="eff ${effortClass(r.effort)}">${esc(r.effort)}</span>` : '<span class="score-none">Not set</span>'}</td>
       <td>${timing}</td>
       <td>${esc(r.assignedTo || '')}</td>
       <td>${esc(fmtDate(lastActivity(r)))}</td>
@@ -490,7 +567,22 @@ function renderDrawer() {
   if (currentTab === 'conversation') body.innerHTML = renderConversation(r);
   if (currentTab === 'notes') body.innerHTML = renderNotes(r);
   if (currentTab === 'history') body.innerHTML = renderHistory(r);
+  if (currentTab === 'triage') updateScoreBox();
+  updateProjectButton();
   body.scrollTop = 0;
+}
+
+function projectLinked(r) { return (r.notes || []).some(n => String(n.text).startsWith(PROJECT_NOTE)); }
+
+function updateProjectButton() {
+  const b = $('createProject'), r = current;
+  if (!b || !r) return;
+  const linked = projectLinked(r), declined = r.triage.status === 'Declined';
+  b.textContent = linked ? 'Open project' : 'Create project';
+  b.disabled = declined;
+  b.title = declined ? 'A declined request cannot be turned into a project. Change its status on the Triage tab first.'
+    : linked ? 'Open the project that was started from this request in the Project Tracker.'
+    : 'Approve this request and start a tracked project plan with its details carried over.';
 }
 
 function renderSubmission(r) {
@@ -520,7 +612,8 @@ function renderTriage(r) {
   const t = r.triage;
   const riskRows = RISKS.map(([key, label]) => `<tr><td>${esc(label)}</td>${RISK_LEVELS.map(l =>
     `<td><input type="radio" name="${key}" value="${l}" aria-label="${esc(label)}: ${l}"${t[key] === l ? ' checked' : ''}></td>`).join('')}</tr>`).join('');
-  return `<form id="triageForm" onsubmit="return false">
+  return `<div class="scorebox" id="scoreBox"></div>
+  <form id="triageForm" onsubmit="return false">
     <div class="grid">
       <div class="f"><label for="t-status">Status</label><select id="t-status" name="status">${opt(STATUSES, t.status)}</select></div>
       <div class="f"><label for="t-priority">Priority</label><select id="t-priority" name="priority">${opt(PRIORITIES, t.priority, 'Not set')}</select></div>
@@ -561,6 +654,23 @@ function collectTriage() {
   RISKS.forEach(([k]) => { t[k] = (fd.get(k) || '').toString(); });
   ['systems', 'businessAreas', 'communications'].forEach(k => { t[k] = fd.getAll(k); });
   return t;
+}
+
+// Live score at the top of the Triage tab; it recalculates as the form changes.
+function updateScoreBox() {
+  const box = $('scoreBox');
+  if (!box || !current || !$('triageForm')) return;
+  const t = collectTriage();
+  const s = scoreOf(current.submission, t);
+  const eff = t.effort ? `<span class="eff ${effortClass(t.effort)}">Effort: ${esc(t.effort)}</span>` : '';
+  if (!s.complete) {
+    box.innerHTML = `<p class="none"><strong>Priority score:</strong> not calculated yet. Select the business areas affected and rate all five risk rows to calculate it. ${eff}</p>`;
+    return;
+  }
+  const sug = suggestedPriority(s.total);
+  box.innerHTML = `<div class="row"><span class="score" style="${scoreStyle(s.total)}">${s.total}</span>
+      <span class="chip a">Business areas ${s.area}</span><span class="chip r">Risk ${s.risk}</span><span class="chip u">Urgency ${s.urgency}</span>${eff}</div>
+    <p class="sugg">Suggested priority: <strong>${sug}</strong>${t.priority === sug ? '' : ' <button type="button" class="linkbtn" id="applySuggested">Use this</button>'}</p>`;
 }
 
 async function saveTriage() {
@@ -679,18 +789,70 @@ async function deleteCurrent() {
 }
 
 function updateRow(record) {
-  const last = record.conversation[record.conversation.length - 1];
-  const summary = {
-    id: record.id, title: record.submission.title, requesterEmail: record.requester.email, requesterName: record.requester.name,
-    createdAt: record.createdAt, updatedAt: record.updatedAt, status: record.triage.status, priority: record.triage.priority,
-    requestKind: record.submission.requestKind, requestType: record.triage.requestType, effort: record.triage.effort,
-    assignedTo: record.triage.assignedTo, frequency: record.submission.frequency, hasDeadline: record.submission.hasDeadline,
-    deadlineDate: record.submission.deadlineDate, preferredTimeframe: record.submission.preferredTimeframe,
-    lastMessageAt: last ? last.at : '', lastMessageRole: last ? last.role : ''
-  };
+  const summary = summaryOf(record);
   const i = all.findIndex(r => r.id === record.id);
   if (i >= 0) all[i] = summary; else all.unshift(summary);
   renderQueue(); renderRows();
+}
+
+/* ===== Project Tracker hand-off ===== */
+function trimTo(str, n) {
+  const t = (str || '').toString().trim();
+  return t.length > n ? t.slice(0, Math.max(0, n - 1)) + '…' : t;
+}
+function encodeForUrl(obj) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function trackerUrl(r) {
+  const s = r.submission, t = r.triage, sc = scoreOf(s, t);
+  const raw = {
+    requestId: r.id,
+    title: trimTo(s.title, 200),
+    requester: r.requester.name,
+    owners: (s.processOwners || []).filter(o => o !== 'Not sure'),
+    need: s.problem, current: s.currentProcess, done: s.definitionOfDone, solution: s.suggestedSolution,
+    scope: t.inScope, outScope: t.outOfScope,
+    timeframe: s.hasDeadline === 'Yes' ? 'Fixed deadline ' + fmtDay(s.deadlineDate) + (s.deadlineDriver ? ' (' + s.deadlineDriver + ')' : '') : (s.preferredTimeframe || ''),
+    timingDetails: s.timingDetails,
+    targetDate: t.targetEnd || (s.hasDeadline === 'Yes' ? s.deadlineDate : ''),
+    priority: sc.complete ? sc.total : null,
+    tier: t.priority || (sc.complete ? suggestedPriority(sc.total) : ''),
+    type: t.requestType || s.requestKind,
+    areas: t.businessAreas, systems: t.systems, communications: t.communications,
+    assigned: t.assignedTo, links: s.links, extra: s.additionalContext,
+    back: location.origin + location.pathname + '#' + r.id
+  };
+  const limits = { need: 900, current: 600, done: 600, solution: 500, scope: 500, outScope: 400, timingDetails: 300, links: 400, extra: 400 };
+  let url = '';
+  for (let k = 1; k >= 0.19; k -= 0.2) {              // shorten long answers until the link is a safe length
+    const copy = Object.assign({}, raw);
+    Object.keys(limits).forEach(f => { copy[f] = trimTo(raw[f], Math.floor(limits[f] * k)); });
+    url = PROJECT_TRACKER_URL + '?from=' + encodeForUrl(copy);
+    if (url.length < 7000) break;
+  }
+  return url;
+}
+
+async function createProject() {
+  if (!current) return;
+  const r = current;
+  window.open(trackerUrl(r), '_blank');                // opened straight away so the browser does not block it
+  if (projectLinked(r)) return;
+  const btn = $('createProject');
+  if (btn) btn.disabled = true;
+  try {
+    let rec = (await api('/api/admin/requests/' + encodeURIComponent(r.id) + '/notes', { method: 'POST', body: { text: PROJECT_NOTE + ' project started from this request.' } })).request;
+    if (['New', 'Under review', 'Needs information'].includes(rec.triage.status)) {
+      rec = (await api('/api/admin/requests/' + encodeURIComponent(r.id), { method: 'PUT', body: { triage: { status: 'Approved' } } })).request;
+    }
+    current = rec;
+    updateRow(rec);
+    renderDrawer();
+    toast('Project started. Status: ' + rec.triage.status + '.');
+  } catch (e) {
+    if (!e.silent) toast('The tracker opened, but this request could not be updated: ' + e.message);
+    if (btn) btn.disabled = false;
+  }
 }
 
 /* ===== CSV export ===== */
@@ -705,6 +867,7 @@ async function exportCsv() {
     ];
     Object.keys(SUB_LABELS).forEach(k => cols.push([SUB_LABELS[k], r => r.submission[k]]));
     Object.keys(TRIAGE_LABELS).forEach(k => cols.push([TRIAGE_LABELS[k], r => r.triage[k]]));
+    cols.push(['Priority score', r => { const sc = scoreOf(r.submission, r.triage); return sc.complete ? sc.total : ''; }]);
     cols.push(['Messages', r => r.conversation.length], ['Internal notes', r => r.notes.length]);
     const cell = v => { v = Array.isArray(v) ? v.join('; ') : (v ?? ''); v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     const csv = [cols.map(c => cell(c[0])).join(',')].concat(requests.map(r => cols.map(c => cell(c[1](r))).join(','))).join('\r\n');
@@ -769,13 +932,19 @@ document.addEventListener('click', ev => {
   if (ev.target.id === 'deleteBtn') deleteCurrent();
   if (ev.target.id === 'sendReply') sendReply();
   if (ev.target.id === 'addNote') addNote();
+  if (ev.target.id === 'createProject') createProject();
+  if (ev.target.id === 'applySuggested') {
+    const sc = scoreOf(current.submission, collectTriage());
+    $('t-priority').value = suggestedPriority(sc.total);
+    triageDirty = true; $('dirtyNote').hidden = false; updateScoreBox();
+  }
 });
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Enter') { const row = ev.target.closest && ev.target.closest('#rows tr[data-id]'); if (row) openRequest(row.dataset.id); }
   if (ev.key === 'Escape' && !$('drawer').hidden) closeDrawer();
 });
-$('drawerBody').addEventListener('input', ev => { if (ev.target.closest('#triageForm')) { triageDirty = true; $('dirtyNote').hidden = false; } });
-$('drawerBody').addEventListener('change', ev => { if (ev.target.closest('#triageForm')) { triageDirty = true; $('dirtyNote').hidden = false; } });
+$('drawerBody').addEventListener('input', ev => { if (ev.target.closest('#triageForm')) { triageDirty = true; $('dirtyNote').hidden = false; updateScoreBox(); } });
+$('drawerBody').addEventListener('change', ev => { if (ev.target.closest('#triageForm')) { triageDirty = true; $('dirtyNote').hidden = false; updateScoreBox(); } });
 $('saveTriage').addEventListener('click', saveTriage);
 $('closeDrawer').addEventListener('click', () => closeDrawer());
 $('backdrop').addEventListener('click', () => closeDrawer());
