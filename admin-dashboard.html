@@ -286,8 +286,8 @@ const LOGIN_URL = 'https://project-requests-login.avance.workers.dev';
 const TOKEN_KEY = 'clear_pr_token';
 const OPEN_KEY = 'clear_pr_open';
 
-// Address of the Project Tracker page. Change this if it is published somewhere else.
-const PROJECT_TRACKER_URL = 'https://forms.clearhq.org/project-tracker';
+// The Project Tracker page. It is published next to this page, so the short name is enough.
+const PROJECT_TRACKER_URL = 'project-tracker.html';
 const PROJECT_NOTE = 'Project Tracker:';
 
 const STATUSES = ['New', 'Under review', 'Needs information', 'Approved', 'Scheduled', 'In progress', 'On hold', 'Completed', 'Declined'];
@@ -827,7 +827,7 @@ function trackerUrl(r) {
   for (let k = 1; k >= 0.19; k -= 0.2) {              // shorten long answers until the link is a safe length
     const copy = Object.assign({}, raw);
     Object.keys(limits).forEach(f => { copy[f] = trimTo(raw[f], Math.floor(limits[f] * k)); });
-    url = PROJECT_TRACKER_URL + '?from=' + encodeForUrl(copy);
+    url = new URL(PROJECT_TRACKER_URL, location.href).href + '?from=' + encodeForUrl(copy);
     if (url.length < 7000) break;
   }
   return url;
