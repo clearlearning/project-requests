@@ -32,6 +32,29 @@
   .hbtn { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.4); color:#fff; border-radius:6px; padding:5px 12px; font-size:.85em; }
   .hbtn:hover { background:rgba(255,255,255,.25); }
   a.hbtn { text-decoration:none; display:inline-block; }
+  .pickbtn { display:flex; align-items:center; justify-content:space-between; gap:4px; text-align:left; cursor:pointer; }
+  .pickbtn .pk-txt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pk-caret { color:#999; font-size:.7em; flex:none; }
+  .linkbtn { background:none; border:0; color:var(--blue); font:inherit; text-decoration:underline; cursor:pointer; padding:0; }
+  .linkbtn:hover { color:var(--burgundy); }
+  .picker { position:fixed; z-index:140; width:240px; max-height:340px; overflow-y:auto; background:#fff; border:1px solid #cfc7bc; border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.22); padding:6px 4px 0; }
+  .pk { display:flex; align-items:center; gap:8px; padding:5px 10px; font-size:.86em; cursor:pointer; border-radius:5px; }
+  .pk:hover { background:#f7f1f3; }
+  .pk-all { font-weight:700; }
+  .pk-sep { height:1px; background:#eee; margin:3px 8px; }
+  .pk-foot { position:sticky; bottom:0; background:#fff; border-top:1px solid #eee; display:flex; justify-content:space-between; align-items:center; padding:7px 10px; margin-top:4px; }
+  .imp-warn { background:#fdf3e3; border-left:4px solid var(--gold); border-radius:4px; padding:8px 12px; margin:10px 0; font-size:.84em; max-height:150px; overflow:auto; }
+  .imp-warn ul { margin:6px 0 0; padding-left:18px; }
+  .imp-ok { background:#e6f4ea; border-left:4px solid var(--green); border-radius:4px; padding:8px 12px; margin:10px 0; font-size:.86em; color:var(--green); font-weight:600; }
+  .imp-err { color:var(--red); font-weight:600; margin:8px 0 0; }
+  .imp-prev { max-height:260px; overflow:auto; border:1px solid #eee; border-radius:6px; }
+  .imp-table { width:100%; border-collapse:collapse; font-size:.82em; }
+  .imp-table th { position:sticky; top:0; background:#f2efe9; color:var(--burgundy); text-align:left; padding:6px 8px; font-size:.9em; }
+  .imp-table td { padding:4px 8px; border-top:1px solid #f0ece6; }
+  .imp-table tr.ph td { background:#f7f1f3; font-weight:700; padding:5px 8px; }
+  .ck-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px 10px; }
+  .ckl { display:flex; align-items:center; gap:6px; font-size:.85em; padding:2px 0; }
+  .ck-all { grid-column:1/-1; font-weight:700; padding-bottom:5px; margin-bottom:3px; border-bottom:1px solid #eee; }
   .hbtn:disabled { opacity:.4; cursor:default; }
 
   main { padding:20px 24px 80px; }
@@ -202,6 +225,7 @@ const TOKEN_KEY = 'clear_pr_token';     // the same sign-in token the request fo
 const PREFILL_KEY = 'clear_pt_prefill';
 const API_BASE = API_URL + '/api';
 const STAFF = ["Adam Parfitt","Amanda Vance","Candela Gomez","Destiny Shen","Greg Searls","Jodie Markey","Julie Winsor","Matt Grayson","Michelle Lynch","Stephanie Tompson","Tora Stubberud-Dobbs","Virginia Smith","Zephir Griffin"];
+const ALL_STAFF = 'All staff';   // special assignee that means everyone
 const PROJECT_STATUSES = ['Planning','Active','On Hold','Complete'];
 const TASK_STATUSES = ['Not Started','In Progress','Blocked','Complete'];
 const PALETTE = ['#64092C','#084D78','#2a7f7f','#5b3a8c','#c4621a','#1e6b34','#8a6a1f','#4a5568'];
@@ -247,7 +271,7 @@ const state = {
   zoom: lsGet('pt_zoom','week'), compact: lsGet('pt_compact',false), autoAdjust: lsGet('pt_auto',true),
   collapsed: lsGet('pt_collapsed',{}),
   filters:{ owner:'', assignee:'', status:'open', q:'' },
-  drawer:null, modal:null,
+  drawer:null, modal:null, picker:null,
   dirty:{}, inflight:{}, resave:{}, conflicts:{}, timers:{}, saveError:false,
   undo:[], _range:null, _rows:[], _didScroll:false
 };
@@ -260,16 +284,39 @@ function hydrate(p){
   p.phases.forEach(ph=>{
     ph.tasks = ph.tasks || [];
     ph.tasks.forEach(t=>{
-      t.subtasks = t.subtasks || []; t.deps = t.deps || []; t.checklist = t.checklist || [];
-      t.subtasks.forEach(s=>{ s.subtasks = []; s.deps = s.deps || []; s.checklist = s.checklist || []; });
+      t.subtasks = t.subtasks || []; t.deps = t.deps || []; t.checklist = t.checklist || []; migrateAssignees(t);
+      t.subtasks.forEach(s=>{ s.subtasks = []; s.deps = s.deps || []; s.checklist = s.checklist || []; migrateAssignees(s); });
     });
   });
   p.color = p.color || PALETTE[0]; p.status = p.status || 'Planning';
   p.title = p.title || 'Untitled project'; p.description = p.description || '';
   return p;
 }
+/* ----- assignees: a task can have several people, or "All staff" ----- */
+function normAssignees(v){
+  let a=Array.isArray(v)? v.filter(x=>typeof x==='string' && x.trim()).map(x=>x.trim()) : [];
+  a=[...new Set(a)];
+  if(a.includes(ALL_STAFF)) return [ALL_STAFF];
+  const rank=n=>{ const i=STAFF.indexOf(n); return i<0? 999 : i; };
+  return a.sort((x,y)=>rank(x)-rank(y));
+}
+function assigneeLabel(t){
+  const a=normAssignees(t.assignees);
+  if(!a.length) return { text:'—', full:'', empty:true };
+  if(a[0]===ALL_STAFF) return { text:ALL_STAFF, full:ALL_STAFF };
+  return { text: a.length===1? a[0] : a[0]+' +'+(a.length-1), full:a.join(', ') };
+}
+function taskAssignedTo(t,who){ const a=t.assignees||[]; return a.includes(who) || a.includes(ALL_STAFF); }
+function migrateAssignees(x){ if(!Array.isArray(x.assignees)) x.assignees = x.assignee? [x.assignee] : []; delete x.assignee; x.assignees=normAssignees(x.assignees); }
+function togglePick(pid,nid,name,checked){
+  const p=getProject(pid), loc=p&&findTask(p,nid); if(!loc) return;
+  let cur=(loc.task.assignees||[]).slice();
+  if(name===ALL_STAFF) cur = checked? [ALL_STAFF] : [];
+  else { cur=cur.filter(n=>n!==ALL_STAFF && n!==name); if(checked) cur.push(name); }
+  applyEdit(pid,nid,'assignees',cur);
+}
 function newTask(over){
-  return Object.assign({ id:uid('t'), name:'New task', assignee:'', start:'', end:'', estHours:0, actualHours:0, percent:0, status:'Not Started', milestone:false, notes:'', deps:[], checklist:[], subtasks:[] }, over||{});
+  return Object.assign({ id:uid('t'), name:'New task', assignees:[], start:'', end:'', estHours:0, actualHours:0, percent:0, status:'Not Started', milestone:false, notes:'', deps:[], checklist:[], subtasks:[] }, over||{});
 }
 function newPhase(name){ return { id:uid('ph'), name:name||'New phase', tasks:[] }; }
 
@@ -466,7 +513,7 @@ function applyEdit(pid, nid, f, v){
     const t=loc.task, parent=isParent(t);
     switch(f){
       case 'name': t.name=(v||'').trim()||t.name; break;
-      case 'assignee': t.assignee=v; break;
+      case 'assignees': t.assignees=normAssignees(v); break;
       case 'notes': t.notes=v; break;
       case 'estHours': t.estHours=Math.max(0,parseFloat(v)||0); break;
       case 'actualHours': t.actualHours=Math.max(0,parseFloat(v)||0); break;
@@ -643,6 +690,37 @@ function queueRender(){
   setTimeout(()=>{ renderQueued=false; render(); },0);
 }
 function dis(){ return canEdit()?'':' disabled'; }
+function assigneePicker(ctx,pid,t){
+  const lab=assigneeLabel(t);
+  if(!canEdit()) return '<span class="rotext" title="'+esc(lab.full)+'">'+esc(lab.text)+'</span>';
+  return '<button type="button" class="cell-in pickbtn" data-act="pick-assignees" data-pid="'+pid+'" data-nid="'+t.id+'" title="'+esc(lab.full||'Choose assignees')+'"'+kk(ctx,pid,t.id,'assignees')+'>'+
+    '<span class="pk-txt'+(lab.empty?' muted':'')+'">'+esc(lab.text)+'</span><span class="pk-caret">▾</span></button>';
+}
+function assigneeNames(cur){ const names=[ALL_STAFF].concat(STAFF); cur.forEach(n=>{ if(!names.includes(n)) names.push(n); }); return names; }
+function pickerHtml(){
+  const pk=state.picker; if(!pk||!canEdit()) return '';
+  const p=getProject(pk.pid), loc=p&&findTask(p,pk.nid); if(!loc) return '';
+  const cur=normAssignees(loc.task.assignees), names=assigneeNames(cur);
+  let h='<div class="picker" id="picker" role="group" aria-label="Choose assignees">';
+  names.forEach((n,i)=>{
+    h+='<label class="pk'+(i===0?' pk-all':'')+'"><input type="checkbox" data-pick="1" data-name="'+esc(n)+'" data-pid="'+pk.pid+'" data-nid="'+pk.nid+'"'+(cur.includes(n)?' checked':'')+kk('pk',pk.pid,pk.nid,'pick'+i)+'> '+esc(n)+'</label>';
+    if(i===0) h+='<div class="pk-sep"></div>';
+  });
+  return h+'<div class="pk-foot"><button type="button" class="linkbtn" data-act="pick-clear" data-pid="'+pk.pid+'" data-nid="'+pk.nid+'">Clear</button><button type="button" class="btn btn-sm btn-primary" data-act="pick-close">Done</button></div></div>';
+}
+function positionPicker(){
+  const el=document.getElementById('picker'); if(!el||!state.picker) return;
+  const btn=document.querySelector('[data-act="pick-assignees"][data-pid="'+state.picker.pid+'"][data-nid="'+state.picker.nid+'"]');
+  if(!btn){ state.picker=null; el.remove(); return; }
+  const r=btn.getBoundingClientRect(), w=el.offsetWidth||240, h=el.offsetHeight||320;
+  const left=Math.min(Math.max(8,r.left), Math.max(8,window.innerWidth-w-8));
+  let top=r.bottom+2; if(top+h>window.innerHeight-8) top=Math.max(8,r.top-h-2);
+  el.style.left=left+'px'; el.style.top=top+'px';
+}
+function assigneeChecks(pid,nid,t){
+  const cur=normAssignees(t.assignees), names=assigneeNames(cur);
+  return '<div class="ck-grid">'+names.map((n,i)=>'<label class="ckl'+(i===0?' ck-all':'')+'"><input type="checkbox" data-pick="1" data-name="'+esc(n)+'" data-pid="'+pid+'" data-nid="'+nid+'"'+(cur.includes(n)?' checked':'')+(canEdit()?'':' disabled')+kk('d',pid,nid,'pick'+i)+'> '+esc(n)+'</label>').join('')+'</div>';
+}
 function kk(ctx,pid,nid,f){ return ' data-k="'+ctx+'|'+(pid||'')+'|'+(nid||'')+'|'+f+'"'; }
 function opts(list, sel, blank){
   let h = blank!=null? '<option value="">'+esc(blank)+'</option>' : '';
@@ -670,7 +748,9 @@ function render(){
   else if(state.view==='projects') body=projectListHtml();
   else body=portfolioHtml();
 
-  root.innerHTML = headerHtml() + '<main>'+body+'</main>' + drawerHtml() + modalHtml();
+  const pk0=document.getElementById('picker'), pkTop=pk0?pk0.scrollTop:0;
+  root.innerHTML = headerHtml() + '<main>'+body+'</main>' + drawerHtml() + modalHtml() + pickerHtml();
+  const pk1=document.getElementById('picker'); if(pk1) pk1.scrollTop=pkTop;
 
   const sc2=document.querySelector('.g-scroll');
   if(sc2){
@@ -741,7 +821,8 @@ function projectViewHtml(p){
   const leaves=projectLeaves(p), r=projectRange(p), pct=weightedPercent(leaves), hl=healthOf(p), hrs=sumHours(leaves);
   const wbs=wbsMap(p), pid=p.id;
   let h='<div class="toolbar"><button class="btn btn-sm" data-act="nav" data-to="projects">← All projects</button>'+
-    '<button class="btn btn-sm" data-act="show-in-portfolio" data-pid="'+pid+'">View in portfolio</button><span class="spacer"></span>'+
+    '<button class="btn btn-sm" data-act="show-in-portfolio" data-pid="'+pid+'">View in portfolio</button>'+
+    (canEdit()?'<button class="btn btn-sm edit-only" data-act="import-open" data-pid="'+pid+'">Import tasks</button>':'')+'<span class="spacer"></span>'+
     (canEdit()?'<button class="btn btn-sm btn-danger edit-only" data-act="delete-project" data-pid="'+pid+'">Delete project</button>':'')+'</div>';
   h+='<div class="card"><div class="p-head"><div>'+
     '<input class="p-title" value="'+esc(p.title)+'" data-f="title" data-pid="'+pid+'"'+kk('p',pid,'','title')+dis()+'>'+
@@ -761,6 +842,7 @@ function projectViewHtml(p){
       (/^https?:\/\//i.test(p.request.link||'')?' · <a href="'+esc(p.request.link)+'" target="_blank" rel="noopener">Open the request</a>':'')+'</div>':'')+
     '<textarea class="p-desc" placeholder="Project description, scope and notes" data-f="description" data-pid="'+pid+'"'+kk('p',pid,'','description')+dis()+'>'+esc(p.description)+'</textarea></div>';
 
+  if(!leaves.length && canEdit()) h+='<div class="card edit-only" style="margin-bottom:12px"><b>This project has no tasks yet.</b> Add phases and tasks below, or <button class="linkbtn" data-act="import-open" data-pid="'+pid+'">import them from a CSV or Excel file</button>.</div>';
   h+='<table class="outline"><thead><tr><th style="min-width:300px">Task</th><th>Assignee</th><th>Start</th><th>End</th><th>Days</th><th>Est. h</th><th>Actual h</th><th>%</th><th>Status</th><th>Depends on</th><th></th></tr></thead><tbody>';
   p.phases.forEach((ph,pi)=>{
     const pr=phaseRange(ph), pleaves=ph.tasks.flatMap(leavesOfTask), ppct=weightedPercent(pleaves), ph_h=sumHours(pleaves);
@@ -787,7 +869,7 @@ function taskRowOutline(p,ph,t,isSub,wbs){
   const dateIn=(f,val,ro)=> ro? '<span class="rotext">'+esc(val)+'</span>' : '<input type="date" class="cell-in date" value="'+esc(val)+'" data-f="'+f+'" data-pid="'+pid+'" data-nid="'+t.id+'"'+kk('o',pid,t.id,f)+dis()+'>';
   return '<tr class="'+cls+'"><td class="nm"><span class="wbs">'+wbs[t.id]+'</span>'+(t.milestone?'<span title="Milestone" style="color:var(--gold)">◆ </span>':'')+
       '<input class="cell-in" style="width:calc(100% - 80px)" value="'+esc(t.name)+'" data-f="name" data-pid="'+pid+'" data-nid="'+t.id+'"'+kk('o',pid,t.id,'name')+dis()+'>'+ck+'</td>'+
-    '<td>'+(parent?'':'<select class="cell-in" data-f="assignee" data-pid="'+pid+'" data-nid="'+t.id+'"'+kk('o',pid,t.id,'assignee')+dis()+'>'+opts(STAFF,t.assignee,'—')+'</select>')+'</td>'+
+    '<td>'+(parent?'':assigneePicker('o',pid,t))+'</td>'+
     '<td>'+(rg.s!=null? dateIn('start',fmtDay(rg.s),false) : dateIn('start','',parent))+'</td>'+
     '<td>'+(parent? '<span class="rotext">'+(rg.e!=null?fmtLocal(rg.e):'')+'</span>' : (t.milestone? '<span class="rotext">'+esc(fmtLocal(parseDay(t.end)))+'</span>' : dateIn('end',t.end,false)))+'</td>'+
     '<td><span class="rotext">'+(rg.s!=null?(rg.e-rg.s+1):'')+'</span></td>'+
@@ -815,7 +897,7 @@ function visibleProjects(){
   const list=state.projects.filter(p=>{
     if(f.status==='open'){ if(p.status==='Complete') return false; } else if(f.status!=='all' && p.status!==f.status) return false;
     if(f.owner && p.owner!==f.owner) return false;
-    if(f.assignee && !projectLeaves(p).some(l=>l.assignee===f.assignee)) return false;
+    if(f.assignee && !projectLeaves(p).some(l=>taskAssignedTo(l,f.assignee))) return false;
     if(q){
       const hit=p.title.toLowerCase().includes(q) || p.phases.some(ph=>ph.name.toLowerCase().includes(q) || ph.tasks.some(t=>t.name.toLowerCase().includes(q) || t.subtasks.some(s=>s.name.toLowerCase().includes(q))));
       if(!hit) return false;
@@ -826,7 +908,7 @@ function visibleProjects(){
 }
 function leafMatches(p,l,parentName){
   const f=state.filters, q=f.q.trim().toLowerCase();
-  if(f.assignee && l.assignee!==f.assignee) return false;
+  if(f.assignee && !taskAssignedTo(l,f.assignee)) return false;
   if(q && !p.title.toLowerCase().includes(q) && !l.name.toLowerCase().includes(q) && !(parentName||'').toLowerCase().includes(q)) return false;
   return true;
 }
@@ -973,7 +1055,7 @@ function rowCells(r,cols){
       const t=r.t, sub=r.type==='subtask', parent=isParent(t), leaves=leavesOfTask(t), rg=taskRange(t), pct=weightedPercent(leaves);
       const ck=t.checklist.length? '<span class="ck-badge">✓ '+t.checklist.filter(x=>x.done).length+'/'+t.checklist.length+'</span>':'';
       if(c.k==='name') cell='<div class="gc name" style="width:'+c.w+'px;padding-left:'+(sub?58:38)+'px">'+(parent?caretFor(t.id,true):'')+(t.milestone?'<span style="color:var(--gold);margin-right:3px">◆</span>':'')+'<input class="cell-in" value="'+esc(t.name)+'" data-f="name" data-pid="'+pid+'" data-nid="'+t.id+'"'+kk('g',pid,t.id,'name')+ed+'>'+ck+'<button class="ib" data-act="detail" data-pid="'+pid+'" data-nid="'+t.id+'" title="Details, checklist and dependencies">☰</button></div>';
-      else if(c.k==='assignee') cell='<div class="gc" style="width:'+c.w+'px">'+(parent?'':'<select class="cell-in" data-f="assignee" data-pid="'+pid+'" data-nid="'+t.id+'"'+kk('g',pid,t.id,'assignee')+ed+'>'+opts(STAFF,t.assignee,'—')+'</select>')+'</div>';
+      else if(c.k==='assignee') cell='<div class="gc" style="width:'+c.w+'px">'+(parent?'':assigneePicker('g',pid,t))+'</div>';
       else if(c.k==='start') cell='<div class="gc" style="width:'+c.w+'px">'+(rg.s!=null||!parent?'<input type="date" class="cell-in date" value="'+(rg.s!=null?fmtDay(rg.s):'')+'" data-f="start" data-pid="'+pid+'" data-nid="'+t.id+'"'+kk('g',pid,t.id,'start')+ed+(parent?' title="Changing this moves all subtasks"':'')+'>':'')+'</div>';
       else if(c.k==='end') cell='<div class="gc" style="width:'+c.w+'px">'+((parent||t.milestone)? '<span class="rotext">'+(rg.e!=null?fmtLocal(rg.e):'')+'</span>' : '<input type="date" class="cell-in date" value="'+esc(t.end)+'" data-f="end" data-pid="'+pid+'" data-nid="'+t.id+'"'+kk('g',pid,t.id,'end')+ed+'>')+'</div>';
       else if(c.k==='pct') cell='<div class="gc" style="width:'+c.w+'px">'+((parent||t.checklist.length)? pct+'%' : '<input type="number" min="0" max="100" class="cell-in num" style="width:50px" value="'+pct+'" data-f="percent" data-pid="'+pid+'" data-nid="'+t.id+'"'+kk('g',pid,t.id,'percent')+ed+'>')+'</div>';
@@ -999,7 +1081,7 @@ function barsHtml(r,range,dw){
   const t=r.t;
   if(isParent(t)) return mkGroup(taskRange(t),r.p.color,weightedPercent(t.subtasks),'task',t.id,t.name);
   const s=parseDay(t.start), e=parseDay(t.end); if(s==null||e==null) return '';
-  const pct=leafPercent(t), tip=esc(t.name)+' — '+fmtNice(s,true)+(e!==s?' to '+fmtNice(e,true):'')+' ('+pct+'%'+(t.assignee?', '+esc(t.assignee):'')+')';
+  const pct=leafPercent(t), tip=esc(t.name)+' — '+fmtNice(s,true)+(e!==s?' to '+fmtNice(e,true):'')+' ('+pct+'%'+(assigneeLabel(t).full?', '+esc(assigneeLabel(t).full):'')+')';
   if(t.milestone) return '<div class="ms" data-drag="move" data-kind="leaf" data-pid="'+r.p.id+'" data-nid="'+t.id+'" data-s="'+s+'" data-e="'+e+'" style="left:'+(X(s)+dw/2-7)+'px;background:'+r.p.color+'" title="'+tip+'"></div>';
   const cls='bar'+(t.status==='Blocked'?' blocked':'')+(isOverdue(t)?' overdue':'');
   return '<div class="'+cls+'" data-drag="move" data-kind="leaf" data-pid="'+r.p.id+'" data-nid="'+t.id+'" data-s="'+s+'" data-e="'+e+'" style="left:'+X(s)+'px;width:'+Math.max(dw,(e-s+1)*dw)+'px;background:'+r.p.color+'" title="'+tip+'"><div class="bar-prog" style="width:'+pct+'%"></div><span class="bh l" data-drag="l"></span><span class="bh r" data-drag="r"></span></div>';
@@ -1027,8 +1109,8 @@ function drawerHtml(){
   if(parent){
     h+='<div class="dw-f"><label>Schedule</label><div>'+fmtNice(taskRange(t).s,true)+' – '+fmtNice(taskRange(t).e,true)+' · '+pct+'% complete · '+sumHours(leaves).act+' of '+sumHours(leaves).est+' hours</div><div class="muted" style="font-size:.8em;margin-top:4px">This task rolls up from its subtasks. Edit the subtasks to change its dates and progress.</div></div>';
   } else {
-    h+='<div class="dw-2 dw-f"><div><label>Assignee</label><select data-f="assignee" data-pid="'+pid+'" data-nid="'+nid+'"'+kk('d',pid,nid,'assignee')+ed+'>'+opts(STAFF,t.assignee,'Unassigned')+'</select></div>'+
-      '<div><label>Status</label><select data-f="status" data-pid="'+pid+'" data-nid="'+nid+'"'+kk('d',pid,nid,'status')+ed+'>'+opts(TASK_STATUSES,t.status)+'</select></div></div>';
+    h+='<div class="dw-f"><label>Status</label><select data-f="status" data-pid="'+pid+'" data-nid="'+nid+'"'+kk('d',pid,nid,'status')+ed+'>'+opts(TASK_STATUSES,t.status)+'</select></div>';
+    h+='<div class="dw-f"><label>Assignees</label>'+assigneeChecks(pid,nid,t)+'</div>';
     h+='<div class="dw-2 dw-f"><div><label>'+(t.milestone?'Date':'Start')+'</label><input type="date" value="'+esc(t.start)+'" data-f="start" data-pid="'+pid+'" data-nid="'+nid+'"'+kk('d',pid,nid,'start')+ed+'></div>'+
       (t.milestone?'<div></div>':'<div><label>End</label><input type="date" value="'+esc(t.end)+'" data-f="end" data-pid="'+pid+'" data-nid="'+nid+'"'+kk('d',pid,nid,'end')+ed+'></div>')+'</div>';
     h+='<div class="dw-f"><label class="chk" style="text-transform:none;font-size:.85em;color:var(--charcoal)"><input type="checkbox" data-f="milestone" data-pid="'+pid+'" data-nid="'+nid+'"'+(t.milestone?' checked':'')+ed+'> This is a milestone (single date)</label></div>';
@@ -1076,6 +1158,7 @@ function modalHtml(){
       '<div class="dw-f"><label>Starting phases</label><select id="np_tpl"><option value="standard">Standard systems project (5 phases)</option><option value="blank">Blank (add my own)</option></select></div>'+
       '<div class="m-foot"><button class="btn" data-act="modal-close">Cancel</button><button class="btn btn-primary" data-act="modal-create">Create project</button></div></div></div>';
   }
+  if(m.type==='import') return importModalHtml(m);
   if(m.type==='confirm'){
     return '<div class="m-back"><div class="m-box"><h3>'+esc(m.title||'Please confirm')+'</h3><p>'+esc(m.text)+'</p>'+
       '<div class="m-foot"><button class="btn" data-act="modal-close">Cancel</button><button class="btn btn-primary" data-act="confirm-yes">'+esc(m.yes||'Confirm')+'</button></div></div></div>';
@@ -1116,6 +1199,7 @@ function setLevel(n){
   lsSet('pt_collapsed',state.collapsed);
 }
 function afterRender(){
+  positionPicker();
   if(state._focusProject){
     const id=state._focusProject; state._focusProject=null;
     const sc=document.querySelector('.g-scroll'), row=document.querySelector('.g-row[data-rid="'+id+'"]'), p=getProject(id);
@@ -1237,6 +1321,14 @@ document.addEventListener('click',e=>{
     case 'conflict-keep': resolveConflict(pid,true); break;
     case 'delete-project': { const p=getProject(pid); confirmBox('“'+(p?p.title:'This project')+'” and all of its tasks will be removed from the tracker. A recovery copy is kept in storage, but it cannot be restored from this screen.','Delete project',()=>deleteProject(pid),'Delete this project?'); break; }
     case 'undo': undo(); break;
+    case 'pick-assignees': state.picker=(state.picker&&state.picker.pid===pid&&state.picker.nid===nid)? null : { pid, nid }; queueRender(); break;
+    case 'pick-clear': applyEdit(pid,nid,'assignees',[]); break;
+    case 'pick-close': state.picker=null; queueRender(); break;
+    case 'import-open': state.modal={ type:'import', pid, step:'choose', mode:'add', error:'' }; queueRender(); break;
+    case 'import-back': if(state.modal){ state.modal.step='choose'; state.modal.plan=null; state.modal.error=''; } queueRender(); break;
+    case 'import-go': { const m=state.modal; if(m&&m.plan){ const st=m.plan.stats; applyImport(m.pid,m.plan,m.mode||'add'); state.modal=null; queueRender(); toast('Imported '+st.tasks+' task'+(st.tasks===1?'':'s')+(st.subtasks?' and '+st.subtasks+' subtask'+(st.subtasks===1?'':'s'):'')+'. Undo (Ctrl+Z) reverses it.'); } break; }
+    case 'template-csv': downloadTemplate('csv'); break;
+    case 'template-xlsx': downloadTemplate('xlsx'); break;
     case 'reload': location.reload(); break;
     case 'sign-in': location.href=LOGIN_URL+'/?return='+encodeURIComponent(location.origin+location.pathname); break;
     case 'sign-out': rawSet(TOKEN_KEY,null); location.href=LOGIN_URL+'/cdn-cgi/access/logout'; break;
@@ -1250,6 +1342,9 @@ function commitDate(key){
 }
 document.addEventListener('change',e=>{
   const t=e.target;
+  if(t.dataset.pick!==undefined){ togglePick(t.dataset.pid,t.dataset.nid,t.dataset.name,t.checked); return; }
+  if(t.id==='importFile'){ handleImportFile(t.files&&t.files[0]); return; }
+  if(t.name==='importMode'){ if(state.modal) state.modal.mode=t.value; return; }
   if(t.dataset.filter){ state.filters[t.dataset.filter]=t.value; queueRender(); return; }
   if(t.dataset.opt==='compact'){ state.compact=t.checked; lsSet('pt_compact',state.compact); queueRender(); return; }
   if(t.dataset.opt==='auto'){ state.autoAdjust=t.checked; lsSet('pt_auto',state.autoAdjust); return; }
@@ -1285,8 +1380,11 @@ document.addEventListener('keydown',e=>{
   const t=e.target;
   if(e.key==='Enter' && t.dataset && t.dataset.enter==='ck-add'){ e.preventDefault(); const v=t.value; if(v.trim()) checklistOp(t.dataset.pid,t.dataset.nid,'add',null,v); }
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z' && !/^(INPUT|TEXTAREA|SELECT)$/.test((t&&t.tagName)||'')){ if(canEdit()&&state.undo.length){ e.preventDefault(); undo(); } }
-  if(e.key==='Escape'){ if(state.modal){ state.modal=null; queueRender(); } else if(state.drawer){ state.drawer=null; queueRender(); } }
+  if(e.key==='Escape'){ if(state.picker){ state.picker=null; queueRender(); } else if(state.modal){ state.modal=null; queueRender(); } else if(state.drawer){ state.drawer=null; queueRender(); } }
 });
+document.addEventListener('click',e=>{ if(state.picker && !e.target.closest('#picker') && !e.target.closest('[data-act="pick-assignees"]')){ state.picker=null; queueRender(); } });
+window.addEventListener('scroll',()=>{ if(state.picker) positionPicker(); },true);
+window.addEventListener('resize',()=>{ if(state.picker) positionPicker(); });
 window.addEventListener('beforeunload',e=>{ if(Object.keys(state.dirty).length||Object.keys(state.inflight).length){ e.preventDefault(); e.returnValue=''; } });
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) poll(); });
 
@@ -1337,6 +1435,294 @@ function endPointer(){
 }
 document.addEventListener('pointerup',endPointer);
 document.addEventListener('pointercancel',endPointer);
+
+/* ============================================================
+   IMPORT FROM CSV / EXCEL
+   Reads the file in the browser (nothing is uploaded anywhere), shows a preview, then adds the plan.
+   ============================================================ */
+const TEMPLATE_XLSX_B64 = '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';
+const TEMPLATE_ROWS = [
+  ['Phase','Task','Subtask','Assignees','Start','End','Hours','Status','% Complete','Milestone','ID','Depends on','Notes'],
+  ['Discovery','Gather requirements','','Amanda Vance; Julie Winsor','2027-01-04','2027-01-08','20','Complete','100','','1','','Interview the process owners'],
+  ['Discovery','Review with leadership','','Jodie Markey','2027-01-11','2027-01-13','6','','','','2','1',''],
+  ['Build','Build the tool','Set up the Worker route','Amanda Vance','2027-01-14','2027-01-19','16','In Progress','40','','3','2',''],
+  ['','Build the tool','Create the page','Amanda Vance','2027-01-20','2027-01-29','40','','','','4','3','Phase is blank, so it uses the phase above'],
+  ['Build','Test with staff','','All staff','2027-02-01','2027-02-05','10','','','','5','4','Everyone tries it and reports problems'],
+  ['Launch','Go-live decision','','Jodie Markey','2027-02-08','','','','','Yes','6','5','A milestone is a single date'],
+  ['Launch','Announce to staff','','Michelle Lynch','2027-02-09','2027-02-10','4','','','','7','6','']
+];
+const IMPORT_HEADERS = {
+  phase:['phase','stage','group','section','workstream'],
+  task:['task','task name','name','activity','work item','title'],
+  subtask:['subtask','sub task'],
+  assignees:['assignees','assignee','assigned to','assigned','owner','owners','resource','resources','people','who'],
+  start:['start','start date','begin','begins'],
+  end:['end','end date','finish','finish date','finishes','due','due date'],
+  days:['days','duration','duration days','length'],
+  hours:['hours','est hours','estimated hours','estimate','effort','est'],
+  actual:['actual hours','actual','hours worked','hours logged'],
+  status:['status','state'],
+  percent:['% complete','percent complete','complete','progress','pct','percent','% done'],
+  milestone:['milestone','is milestone'],
+  id:['id','#','wbs','task id','row id'],
+  depends:['depends on','dependencies','depends','predecessor','predecessors','waits for'],
+  notes:['notes','note','description','comments'],
+  checklist:['checklist','check list','checklist items']
+};
+const HEADER_LOOKUP={}; Object.keys(IMPORT_HEADERS).forEach(k=>IMPORT_HEADERS[k].forEach(h=>{ HEADER_LOOKUP[h]=k; }));
+const STATUS_WORDS={ notstarted:'Not Started', todo:'Not Started', open:'Not Started', new:'Not Started', planned:'Not Started', inprogress:'In Progress', started:'In Progress', active:'In Progress', ongoing:'In Progress', wip:'In Progress', blocked:'Blocked', onhold:'Blocked', stuck:'Blocked', complete:'Complete', completed:'Complete', done:'Complete', finished:'Complete', closed:'Complete' };
+const ALL_ALIASES=['all','all staff','everyone','everybody','whole team','entire team','team','all team'];
+
+function normHeader(x){ return String(x==null?'':x).toLowerCase().replace(/[^a-z0-9%#]+/g,' ').trim(); }
+function download(name,blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+function csvCell(v){ v=String(v==null?'':v); return /[",\r\n]/.test(v)? '"'+v.replace(/"/g,'""')+'"' : v; }
+function downloadTemplate(kind){
+  if(kind==='csv') download('project-import-template.csv', new Blob(['\ufeff'+TEMPLATE_ROWS.map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));
+  else download('project-import-template.xlsx', new Blob([Uint8Array.from(atob(TEMPLATE_XLSX_B64),c=>c.charCodeAt(0))],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+}
+
+/* ----- CSV ----- */
+function parseCsv(text){
+  text=text.replace(/^\uFEFF/,'');
+  const head=text.split(/\r?\n/).slice(0,5).join('\n');
+  const count=ch=>(head.match(new RegExp(ch==='\t'?'\t':'\\'+ch,'g'))||[]).length;
+  const delim = (count('\t')>count(',') && count('\t')>count(';'))? '\t' : (count(';')>count(',')? ';' : ',');
+  const rows=[]; let row=[], cur='', inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){ if(c==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else inQ=false; } else cur+=c; }
+    else if(c==='"') inQ=true;
+    else if(c===delim){ row.push(cur); cur=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(cur); cur=''; rows.push(row); row=[]; }
+    else cur+=c;
+  }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+
+/* ----- Excel (.xlsx): a zip of XML files, read with the browser's built-in decompression ----- */
+async function inflateRaw(bytes){
+  if(typeof DecompressionStream==='undefined') throw new Error('This browser cannot open Excel files directly. Save the sheet as a CSV file and import that instead.');
+  const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function unzip(buf){
+  const dv=new DataView(buf), u8=new Uint8Array(buf), dec=new TextDecoder();
+  let eocd=-1; for(let i=u8.length-22;i>=Math.max(0,u8.length-65557);i--){ if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; } }
+  if(eocd<0) throw new Error('This file is not an Excel workbook (.xlsx).');
+  const count=dv.getUint16(eocd+10,true); let p=dv.getUint32(eocd+16,true); const files={};
+  for(let n=0;n<count;n++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const method=dv.getUint16(p+10,true), csize=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), el=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lho=dv.getUint32(p+42,true);
+    files[dec.decode(u8.subarray(p+46,p+46+nl))]={ method, csize, lho }; p+=46+nl+el+cl;
+  }
+  return { async get(name){
+    const f=files[name]; if(!f) return null;
+    const start=f.lho+30+dv.getUint16(f.lho+26,true)+dv.getUint16(f.lho+28,true);
+    const data=u8.subarray(start,start+f.csize);
+    return dec.decode(f.method===0? data : await inflateRaw(data));
+  } };
+}
+function colIndex(ref){ const m=/^([A-Z]+)/.exec(ref||''); if(!m) return 0; let n=0; for(const ch of m[1]) n=n*26+(ch.charCodeAt(0)-64); return n-1; }
+async function readXlsx(buf){
+  const zip=await unzip(buf), xml=t=>new DOMParser().parseFromString(t,'application/xml');
+  const wbText=await zip.get('xl/workbook.xml'); if(!wbText) throw new Error('This file is not an Excel workbook (.xlsx).');
+  const RNS='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const sheets=[...xml(wbText).getElementsByTagName('sheet')].map(e=>({ name:e.getAttribute('name')||'', rid:e.getAttribute('r:id')||e.getAttributeNS(RNS,'id') }));
+  if(!sheets.length) throw new Error('This workbook has no sheets.');
+  const pick=sheets.find(sh=>sh.name.toLowerCase()==='tasks')||sheets[0];
+  const relsText=await zip.get('xl/_rels/workbook.xml.rels'); let target='';
+  if(relsText){ const rel=[...xml(relsText).getElementsByTagName('Relationship')].find(r=>r.getAttribute('Id')===pick.rid); if(rel) target=rel.getAttribute('Target')||''; }
+  const path = target? (target.charAt(0)==='/'? target.slice(1) : 'xl/'+target) : 'xl/worksheets/sheet1.xml';
+  const sheetText=await zip.get(path); if(!sheetText) throw new Error('The "'+pick.name+'" sheet could not be read.');
+  const shared=[]; const ssText=await zip.get('xl/sharedStrings.xml');
+  if(ssText) [...xml(ssText).getElementsByTagName('si')].forEach(si=>{ let t=''; [...si.children].forEach(ch=>{ if(ch.tagName==='t') t+=ch.textContent; else if(ch.tagName==='r'){ [...ch.children].forEach(x=>{ if(x.tagName==='t') t+=x.textContent; }); } }); shared.push(t); });
+  const rows=[];
+  [...xml(sheetText).getElementsByTagName('row')].forEach(r=>{
+    const ri=(parseInt(r.getAttribute('r'),10)||rows.length+1)-1; const out=rows[ri]||(rows[ri]=[]);
+    [...r.getElementsByTagName('c')].forEach(c=>{
+      const type=c.getAttribute('t'), vEl=c.getElementsByTagName('v')[0], v=vEl? vEl.textContent : ''; let val='';
+      if(type==='s') val=shared[+v]!==undefined? shared[+v] : '';
+      else if(type==='inlineStr'){ const isEl=c.getElementsByTagName('is')[0]; val=isEl? isEl.textContent : ''; }
+      else if(type==='str') val=v;
+      else if(type==='b') val=v==='1'? 'TRUE' : 'FALSE';
+      else if(type==='e') val='';
+      else val = v===''? '' : (isNaN(Number(v))? v : Number(v));
+      out[colIndex(c.getAttribute('r'))]=val;
+    });
+  });
+  for(let i=0;i<rows.length;i++){ rows[i]=rows[i]? Array.from(rows[i],x=>x===undefined? '' : x) : []; }
+  return rows;
+}
+async function readImportFile(file){
+  const name=(file.name||'').toLowerCase();
+  if(/\.xls$/.test(name)) throw new Error('That is an older Excel format (.xls). Open it in Excel and save it as .xlsx or .csv, then try again.');
+  const buf=await file.arrayBuffer(), u8=new Uint8Array(buf);
+  if((u8.length>3 && u8[0]===0x50 && u8[1]===0x4b) || /\.(xlsx|xlsm)$/.test(name)) return await readXlsx(buf);
+  let text; try{ text=new TextDecoder('utf-8',{fatal:true}).decode(buf); }catch(e){ text=new TextDecoder('windows-1252').decode(buf); }
+  return parseCsv(text);
+}
+
+/* ----- turning rows into phases and tasks ----- */
+function ymdToDay(y,mo,d){ if(y<2000||y>2100) return {ok:false}; const dt=new Date(Date.UTC(y,mo-1,d)); if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==mo-1||dt.getUTCDate()!==d) return {ok:false}; return {ok:true,day:Math.floor(dt.getTime()/DAY_MS)}; }
+function parseImportDate(v){
+  if(v===null||v===undefined||v==='') return { ok:true, day:null };
+  if(typeof v==='number' || /^\d+(\.\d+)?$/.test(String(v).trim())){ const n=Number(v); return (n>=20000&&n<=80000)? { ok:true, day:Math.floor(n)-25569 } : { ok:false }; }   // Excel stores dates as day numbers
+  const t=String(v).trim(); let m;
+  if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(t))) return ymdToDay(+m[1],+m[2],+m[3]);
+  if((m=/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(t))){ let y=+m[3]; if(y<100) y+=2000; return ymdToDay(y,+m[1],+m[2]); }
+  const ms=Date.parse(t); if(!isNaN(ms)){ const d=new Date(ms); return ymdToDay(d.getFullYear(),d.getMonth()+1,d.getDate()); }
+  return { ok:false };
+}
+function resolveStaff(token){
+  const t=token.trim().replace(/\s+/g,' '), low=t.toLowerCase(); if(!t) return {};
+  if(ALL_ALIASES.includes(low)) return { name:ALL_STAFF };
+  const exact=STAFF.find(n=>n.toLowerCase()===low); if(exact) return { name:exact };
+  const hits=STAFF.filter(n=>{ const full=n.toLowerCase(), parts=full.split(/[\s-]+/); return full.startsWith(low) || low.split(' ').every(w=>parts.some(x=>x.startsWith(w))); });
+  if(hits.length===1) return { name:hits[0] };
+  return { error: hits.length>1? 'matches more than one person' : 'is not in the staff list' };
+}
+function mapHeaders(row){ const out={}; (row||[]).forEach((h,i)=>{ const k=HEADER_LOOKUP[normHeader(h)]; if(k && out[k]===undefined) out[k]=i; }); return out; }
+function isYes(v){ return /^(yes|y|true|1|x|✓|✔|milestone)$/i.test(String(v==null?'':v).trim()); }
+
+function buildPlan(rows){
+  let hi=-1, cols={};
+  for(let i=0;i<Math.min(rows.length,15);i++){ const m=mapHeaders(rows[i]); if(m.task!==undefined || m.subtask!==undefined){ hi=i; cols=m; break; } }
+  if(hi<0) return { error:'The header row was not found. The first row of the file needs column titles, including “Task”. Download the template to see the layout.' };
+  const warnings=[], W=(rn,msg)=>warnings.push('Row '+rn+': '+msg);
+  const get=(row,k)=>{ const i=cols[k]; if(i===undefined) return ''; const v=row[i]; return v==null? '' : (typeof v==='string'? v.trim() : v); };
+  const gs=(row,k)=>String(get(row,k)).trim();
+
+  // Excel stores 50% as 0.5; if every value in the column is between 0 and 1, treat them as fractions
+  const pctVals=[]; for(let i=hi+1;i<rows.length;i++){ const raw=get(rows[i]||[],'percent'); if(raw!=='' && !/%/.test(String(raw))){ const n=Number(raw); if(!isNaN(n)) pctVals.push(n); } }
+  const pctFraction=pctVals.length>0 && pctVals.every(n=>n>=0&&n<=1);
+
+  const phases=[], byName={}; let cur=null, lastTask=null; const pending=[], idMap={}, nameMap={};
+  const phaseFor=name=>{ const k=name.toLowerCase(); if(!byName[k]){ const ph=newPhase(name); byName[k]=ph; phases.push(ph); } return byName[k]; };
+
+  for(let i=hi+1;i<rows.length;i++){
+    const row=rows[i]||[], rn=i+1;
+    if(row.every(c=>c===''||c==null)) continue;
+    const phaseName=gs(row,'phase'), taskName=gs(row,'task'), subName=gs(row,'subtask');
+    if(phaseName) cur=phaseFor(phaseName);
+    if(!taskName && !subName){
+      const other=Object.keys(cols).some(k=>k!=='phase' && gs(row,k)!=='');
+      if(other) W(rn,'there is no task name, so the row was skipped');
+      continue;
+    }
+    if(!cur) cur=phaseFor('Imported tasks');
+    let t;
+    if(subName){
+      const parentName=taskName||(lastTask? lastTask.name : '');
+      if(!parentName){ W(rn,'a subtask needs a task above it, so the row was skipped'); continue; }
+      let parent=cur.tasks.find(x=>x.name.toLowerCase()===parentName.toLowerCase());
+      if(!parent){ parent=newTask({ name:parentName }); cur.tasks.push(parent); }
+      t=newTask({ name:subName }); parent.subtasks.push(t); lastTask=parent;
+    } else { t=newTask({ name:taskName }); cur.tasks.push(t); lastTask=t; }
+
+    // people
+    const names=[]; gs(row,'assignees').split(/[;,|\n]|\s+(?:and|&)\s+/i).map(x=>x.trim()).filter(Boolean).forEach(tok=>{
+      const r=resolveStaff(tok); if(r.name) names.push(r.name); else W(rn,'“'+tok+'” '+r.error+', so it was left out');
+    });
+    t.assignees=normAssignees(names);
+
+    // dates
+    const sd=parseImportDate(get(row,'start')), ed=parseImportDate(get(row,'end'));
+    if(!sd.ok){ W(rn,'the start date “'+get(row,'start')+'” could not be read'); sd.day=null; }
+    if(!ed.ok){ W(rn,'the end date “'+get(row,'end')+'” could not be read'); ed.day=null; }
+    let s=sd.day, e=ed.day; const days=Math.round(Number(get(row,'days'))||0);
+    if(s==null && e!=null) s=e;
+    if(e==null && s!=null) e = days>1? s+days-1 : s;
+    if(s!=null && e<s){ W(rn,'the end date is before the start date, so the end was set to the start'); e=s; }
+    const ms=isYes(get(row,'milestone')); if(ms){ t.milestone=true; if(s!=null) e=s; }
+    t.start = s==null? '' : fmtDay(s); t.end = e==null? '' : fmtDay(e);
+
+    // numbers, status, notes, checklist
+    const hours=get(row,'hours'); if(hours!==''){ const n=Number(hours); if(isNaN(n)) W(rn,'the hours “'+hours+'” are not a number'); else t.estHours=Math.max(0,n); }
+    const act=get(row,'actual'); if(act!==''){ const n=Number(act); if(!isNaN(n)) t.actualHours=Math.max(0,n); }
+    const pr=get(row,'percent');
+    if(pr!==''){ let n=parseFloat(String(pr).replace('%','')); if(isNaN(n)) W(rn,'the percent complete “'+pr+'” is not a number'); else { if(pctFraction && !/%/.test(String(pr))) n*=100; setLeafPercent(t,clamp(n,0,100)); } }
+    const st=gs(row,'status'); if(st){ const mapped=STATUS_WORDS[st.toLowerCase().replace(/[^a-z]/g,'')]; if(mapped) setLeafStatus(t,mapped); else W(rn,'the status “'+st+'” was not recognized'); }
+    t.notes=gs(row,'notes');
+    gs(row,'checklist').split(/\||\n/).map(x=>x.trim()).filter(Boolean).forEach(x=>t.checklist.push({ id:uid('c'), text:x, done:false }));
+    if(t.checklist.length) syncStatusFromChecklist(t);
+
+    // identifiers for dependencies
+    const id=gs(row,'id'); if(id) idMap[id.toLowerCase()]=t;
+    if(!subName || true) { const k=t.name.toLowerCase(); if(!nameMap[k]) nameMap[k]=t; }
+    const dep=gs(row,'depends'); if(dep) pending.push({ t, rn, tokens:dep.split(/[;,|\n]/).map(x=>x.trim()).filter(Boolean) });
+  }
+
+  // dependencies (finish-to-start, on tasks that are not groups)
+  const staged={ phases };
+  pending.forEach(({t,rn,tokens})=>{
+    tokens.forEach(tok=>{
+      const target=idMap[tok.toLowerCase()]||nameMap[tok.toLowerCase()];
+      if(!target){ W(rn,'“'+tok+'” in Depends on does not match any ID or task name'); return; }
+      if(target===t){ W(rn,'a task cannot depend on itself'); return; }
+      if(isParent(target) || isParent(t)){ W(rn,'“'+tok+'” has subtasks, so depend on one of its subtasks instead'); return; }
+      if(wouldCycle(staged,t.id,target.id)){ W(rn,'depending on “'+tok+'” would create a loop, so it was skipped'); return; }
+      if(!t.deps.includes(target.id)) t.deps.push(target.id);
+    });
+  });
+
+  const all=phases.flatMap(ph=>ph.tasks.flatMap(leavesOfTask));
+  if(!all.length) return { error:'No tasks were found under the “Task” column. Check that the file has task names and try again.' };
+  const noDates=all.filter(l=>!l.start).length;
+  if(noDates) warnings.push(noDates+' of '+all.length+' tasks have no dates. They will be added, but will not appear on the Gantt chart until dates are entered.');
+  return { phases, warnings, stats:{
+    phases:phases.length, tasks:phases.reduce((n,ph)=>n+ph.tasks.length,0),
+    subtasks:phases.reduce((n,ph)=>n+ph.tasks.reduce((m,t)=>m+t.subtasks.length,0),0),
+    milestones:all.filter(l=>l.milestone).length, deps:all.reduce((n,l)=>n+l.deps.length,0) } };
+}
+
+function applyImport(pid,plan,mode){
+  const prev=state.autoAdjust; state.autoAdjust=false;          // keep the dates exactly as they are in the file
+  try{
+    mutate(pid,p=>{
+      if(mode==='replace') p.phases=plan.phases;
+      else plan.phases.forEach(ph=>{ const ex=p.phases.find(x=>x.name.toLowerCase()===ph.name.toLowerCase()); if(ex) ex.tasks.push(...ph.tasks); else p.phases.push(ph); });
+    });
+  } finally { state.autoAdjust=prev; }
+}
+async function handleImportFile(file){
+  const m=state.modal; if(!m||m.type!=='import'||!file) return;
+  m.error='';
+  try{
+    const plan=buildPlan(await readImportFile(file));
+    if(plan.error) m.error=plan.error; else { m.plan=plan; m.step='preview'; m.fileName=file.name; }
+  }catch(e){ m.error=e.message||'That file could not be read.'; }
+  queueRender();
+}
+function importModalHtml(m){
+  const p=getProject(m.pid); const title=p? esc(p.title) : 'this project';
+  if(m.step==='preview' && m.plan){
+    const st=m.plan.stats, plural=(n,w)=>n+' '+w+(n===1?'':'s'), existing=p? projectLeaves(p).length : 0;
+    let rows='', shown=0;
+    m.plan.phases.forEach(ph=>{
+      if(shown<60) rows+='<tr class="ph"><td colspan="4">'+esc(ph.name)+'</td></tr>';
+      ph.tasks.forEach(t=>{
+        const line=(x,sub)=>{ if(shown++>=60) return ''; const rg=isParent(x)? taskRange(x) : { s:parseDay(x.start), e:parseDay(x.end) }; const lab=assigneeLabel(x);
+          return '<tr><td style="padding-left:'+(sub?30:14)+'px">'+(x.milestone?'<span style="color:var(--gold)">◆ </span>':'')+esc(x.name)+'</td><td>'+(isParent(x)?'':esc(lab.empty?'':lab.text))+'</td><td>'+(rg.s!=null? fmtLocal(rg.s)+(rg.e!==rg.s? ' – '+fmtLocal(rg.e):'') : '<span class="muted">no dates</span>')+'</td><td class="muted">'+(x.deps.length? x.deps.length+' predecessor'+(x.deps.length===1?'':'s') : '')+'</td></tr>'; };
+        rows+=line(t,false); t.subtasks.forEach(sb=>{ rows+=line(sb,true); });
+      });
+    });
+    const total=st.tasks+st.subtasks;
+    return '<div class="m-back"><div class="m-box" style="max-width:760px"><h3>Import preview</h3>'+
+      '<p style="margin:0 0 8px"><b>'+plural(st.phases,'phase')+' · '+plural(st.tasks,'task')+' · '+plural(st.subtasks,'subtask')+' · '+plural(st.milestones,'milestone')+' · '+plural(st.deps,'dependency').replace('dependencys','dependencies')+'</b><br><span class="muted">from '+esc(m.fileName||'the file')+'</span></p>'+
+      (m.plan.warnings.length? '<div class="imp-warn"><b>'+plural(m.plan.warnings.length,'thing')+' to check.</b> These will not stop the import; each one tells you what was left out or changed.<ul>'+m.plan.warnings.slice(0,40).map(w=>'<li>'+esc(w)+'</li>').join('')+(m.plan.warnings.length>40?'<li>…and '+(m.plan.warnings.length-40)+' more.</li>':'')+'</ul></div>' : '<div class="imp-ok">Everything in the file was read cleanly.</div>')+
+      '<div class="imp-prev"><table class="imp-table"><thead><tr><th>Task</th><th>Assignees</th><th>Dates</th><th></th></tr></thead><tbody>'+rows+(total>60?'<tr><td colspan="4" class="muted" style="padding-left:14px">…and '+(total-60)+' more not shown here</td></tr>':'')+'</tbody></table></div>'+
+      '<div class="dw-f" style="margin-top:12px"><label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:.9em;color:var(--charcoal);font-weight:600"><input type="radio" name="importMode" value="add" style="width:auto"'+(m.mode!=='replace'?' checked':'')+'> Add to “'+title+'”'+(existing?' (keeps its '+plural(existing,'existing task')+')':'')+'</label>'+
+      '<label style="display:flex;gap:8px;align-items:center;text-transform:none;font-size:.9em;color:var(--charcoal);font-weight:600;margin-top:6px"><input type="radio" name="importMode" value="replace" style="width:auto"'+(m.mode==='replace'?' checked':'')+'> Replace the current plan'+(existing?' (removes its '+plural(existing,'task')+'; Undo brings them back)':'')+'</label></div>'+
+      '<div class="m-foot"><button class="btn" data-act="import-back">Choose another file</button><button class="btn" data-act="modal-close">Cancel</button><button class="btn btn-primary" data-act="import-go">Import</button></div></div></div>';
+  }
+  return '<div class="m-back"><div class="m-box"><h3>Import tasks from a file</h3>'+
+    '<p>Choose a CSV or Excel (.xlsx) file to add phases and tasks to <b>'+title+'</b>. You will see a preview before anything is added, and Undo reverses the whole import.</p>'+
+    '<p class="muted" style="font-size:.9em">Not sure how to lay it out? Start from a template: <button class="linkbtn" data-act="template-xlsx">Excel template</button> or <button class="linkbtn" data-act="template-csv">CSV template</button>. Only a <b>Task</b> column is required.</p>'+
+    '<div class="dw-f"><label>Choose a file</label><input type="file" id="importFile" accept=".csv,.xlsx,.xlsm,.txt,.tsv"></div>'+
+    (m.error? '<p class="imp-err" role="alert">'+esc(m.error)+'</p>' : '')+
+    '<div class="m-foot"><button class="btn" data-act="modal-close">Cancel</button></div></div></div>';
+}
 
 /* ============================================================
    START
